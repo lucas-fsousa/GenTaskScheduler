@@ -1,26 +1,28 @@
 ﻿using GenTaskScheduler.Core.Abstractions.Repository;
 using GenTaskScheduler.Core.Data.Internal;
-using GenTaskScheduler.Core.Enums;
-using GenTaskScheduler.Core.Infra.Log;
+using GenTaskScheduler.Core.Infra.Logger;
 using GenTaskScheduler.Core.Models.Triggers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
 
 namespace GenTaskScheduler.Core.Data.Services;
 public class TriggerRepository(GenTaskSchedulerDbContext context, ILogger<ApplicationLogger> logger): ITriggerRepository {
-
   public async Task AddAsync(BaseTrigger trigger, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
       trigger.CreatedAt = DateTimeOffset.UtcNow;
       trigger.UpdatedAt = DateTimeOffset.UtcNow;
       trigger.Executions = 0;
       trigger.NextExecution = null;
-
+      trigger.TaskId = trigger.Task?.Id ?? trigger.TaskId;
+      trigger.Task = null!;
+      
+      if(trigger.TaskId == Guid.Empty)
+        throw new ArgumentException("TaskId from trigger cannot be empty", nameof(trigger));
+      
       if(trigger.StartsAt < DateTimeOffset.UtcNow)
-        throw new ArgumentException($"The param {trigger.StartsAt} cannot be in the past for triggers", nameof(trigger));
+        throw new ArgumentException($"The param {nameof(trigger.StartsAt)} cannot be in the past for triggers", nameof(trigger));
 
-      await context.AddAsync(trigger, cancellationToken);
+      await context.BaseTriggers.AddAsync(trigger, cancellationToken);
       if(autoCommit) {
         await CommitAsync(cancellationToken);
         logger.LogInformation("Trigger with Id {Id} added successfully", trigger.Id);

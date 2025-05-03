@@ -8,6 +8,7 @@ using GenTaskScheduler.Core.Models.Common;
 using GenTaskScheduler.Core.Models.Triggers;
 
 namespace GenTaskScheduler.Core.Infra.Builder.TaskBuilder;
+
 public class ScheduleTaskBuilder:
     IScheduledTaskBuilderStart,
     IScheduledTaskBuilderJob,
@@ -25,7 +26,7 @@ public class ScheduleTaskBuilder:
   }
 
   public static IScheduledTaskBuilderStart Create(string name) {
-    if(string.IsNullOrWhiteSpace(name))
+    if(string.IsNullOrEmpty(name))
       throw new ArgumentException("Task name cannot be null or empty", nameof(name));
 
     return new ScheduleTaskBuilder(name);
@@ -36,25 +37,13 @@ public class ScheduleTaskBuilder:
     return this;
   }
 
-  public IScheduledTaskBuilderDependsOn AddTrigger(BaseTrigger trigger) {
-    _task.Triggers.Add(trigger);
-    return this;
-  }
-
-  public IScheduledTaskBuilderDependsOn AddTriggers(IEnumerable<BaseTrigger> triggers) {
-    foreach(var trigger in triggers) {
-      _task.Triggers.Add(trigger);
-    }
-    return this;
-  }
-
-  public IScheduledTaskBuilderDependsOn AddTrigger<T>(Action<T> configure) where T : BaseTrigger {
-    var trigger = Activator.CreateInstance(typeof(T)) as T ??
-      throw new InvalidOperationException($"Failed to instantiate trigger of type '{typeof(T).Name}'. Ensure it has a parameterless constructor and is not abstract.");
-    configure?.Invoke(trigger);
-    _task.Triggers.Add(trigger);
-    return this;
-  }
+  //public IScheduledTaskBuilderDependsOn AddTrigger<T>(Action<T> configure) where T : BaseTrigger {
+  //  var trigger = Activator.CreateInstance(typeof(T)) as T ??
+  //    throw new InvalidOperationException($"Failed to instantiate trigger of type '{typeof(T).Name}'. Ensure it has a parameterless constructor and is not abstract.");
+  //  configure?.Invoke(trigger);
+  //  _task.Triggers.Add(trigger);
+  //  return this;
+  //}
 
   public IScheduledTaskBuilderOptions SetAutoDelete(bool value) {
     _task.AutoDelete = value;
@@ -114,9 +103,8 @@ public class ScheduleTaskBuilder:
 
   public IScheduledTaskBuilderDependsOn ConfigureTriggers(Action<ITriggerBuilderStart> configure) {
     ArgumentNullException.ThrowIfNull(configure);
-    var builder = TriggerBuilder.TriggerBuilder.Start();
+    var builder = GenSchedulerTriggerBuilder.Start(_task);
     configure(builder);
-
     return this;
   }
 }

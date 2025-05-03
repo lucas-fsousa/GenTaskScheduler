@@ -61,4 +61,9 @@ public abstract class BaseTrigger : BaseModel {
   /// Total number of times there have been executions so far.
   /// </summary>
   public int Executions { get; set; }
+
+  /// <summary>
+  /// The specific time of day when the task should be executed.
+  /// </summary>
+  public TimeOnly TimeOfDay { get; set; }
 }

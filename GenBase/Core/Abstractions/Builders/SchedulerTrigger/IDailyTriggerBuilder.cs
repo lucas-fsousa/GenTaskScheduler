@@ -1,4 +1,6 @@
-﻿namespace GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger;
+﻿using GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger.SharedSteps;
+
+namespace GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger;
 
 /// <summary>
 /// Builder for Daily Trigger.
@@ -8,7 +10,7 @@ public interface IDailyTriggerBuilder {
   /// Sets the start time of the trigger.
   /// </summary>
   /// <param name="time">Time of day at which execution should begin</param>
-  /// <returns>IMonthlyTriggerBuilder</returns>
-  IDailyTriggerBuilder SetTimeOfDay(TimeSpan time);
+  /// <returns>ICommonTriggerStep</returns>
+  ICommonTriggerStep SetTimeOfDay(TimeOnly time);
 }
 

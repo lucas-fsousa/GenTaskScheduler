@@ -1,7 +1,7 @@
 ﻿using GenTaskScheduler.Core.Abstractions.Repository;
 using GenTaskScheduler.Core.Data.Internal;
 using GenTaskScheduler.Core.Enums;
-using GenTaskScheduler.Core.Infra.Log;
+using GenTaskScheduler.Core.Infra.Logger;
 using GenTaskScheduler.Core.Models.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -14,37 +14,32 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
       if(task is null)
         throw new ArgumentNullException(nameof(task), "Task cannot be null");
 
-      if(task.Triggers is null || task.Triggers.Count == 0)
+      if(task.Triggers is null || task.Triggers.Count <= 0)
         throw new ArgumentException("Task must have at least one trigger", nameof(task));
 
       var existe = await context.ScheduledTasks.AnyAsync(t => t.Name.ToLower().Equals(task.Name.ToLower()) && t.IsActive, cancellationToken);
       if(existe)
         throw new ArgumentException($"Task with name [{task.Name}] already exists", nameof(task));
 
-      foreach(var trigger in task.Triggers)
-        context.Entry(trigger).State = EntityState.Added;
 
-      task.CreatedAt = DateTimeOffset.UtcNow;
+      if(task.DependsOnTask is not null)
+        await AddAsync(task.DependsOnTask, false, cancellationToken);
+      
       task.UpdatedAt = DateTimeOffset.UtcNow;
+      task.CreatedAt = DateTimeOffset.UtcNow;
       task.ExecutionStatus = ExecutionStatus.Ready;
-      task.DependsOnTaskId = task.DependsOnTask?.Id ?? task.DependsOnTask?.Id;
+      task.DependsOnTaskId = task.DependsOnTask?.Id ?? task.DependsOnTaskId;
+      task.DependsOnTask = null;
 
-      var tmpDependency = task.DependsOnTask;
-      while(tmpDependency is not null) {
-        tmpDependency.CreatedAt = DateTimeOffset.UtcNow;
-        tmpDependency.UpdatedAt = DateTimeOffset.UtcNow;
-        tmpDependency.ExecutionStatus = ExecutionStatus.Ready;
-        tmpDependency = tmpDependency.DependsOnTask;
-      }
-
-      var triggers = task.Triggers;
+      var triggers = task.Triggers.ToList();
       task.Triggers.Clear();
+      await context.ScheduledTasks.AddAsync(task, cancellationToken);
+      
       foreach(var trigger in triggers) {
         await triggerRepository.AddAsync(trigger, false, cancellationToken);
         trigger.TaskId = task.Id;
       }
-      
-      await context.ScheduledTasks.AddAsync(task, cancellationToken);
+
       if(autoCommit) {
         await CommitAsync(cancellationToken);
         logger.LogInformation("Task with Id {Id} added successfully", task.Id);

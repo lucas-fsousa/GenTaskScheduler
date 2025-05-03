@@ -1,8 +1,10 @@
-﻿namespace GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger;
+﻿using GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger.SharedSteps;
+
+namespace GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger;
 
 /// <summary>
 /// Interface for building a once trigger.
 /// </summary>
 public interface IOnceTriggerBuilder {
-  IOnceTriggerBuilder SetExecutionTime(DateTimeOffset executionTime);
+  ICommonTriggerStep SetExecutionDateTime(DateTimeOffset executionTime);
 }

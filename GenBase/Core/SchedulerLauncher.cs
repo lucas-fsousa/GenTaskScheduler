@@ -1,9 +1,9 @@
 ﻿using GenTaskScheduler.Core.Abstractions.Common;
 using GenTaskScheduler.Core.Abstractions.Repository;
 using GenTaskScheduler.Core.Enums;
-using GenTaskScheduler.Core.Infra;
+using GenTaskScheduler.Core.Infra.Configurations;
 using GenTaskScheduler.Core.Infra.Helper;
-using GenTaskScheduler.Core.Infra.Log;
+using GenTaskScheduler.Core.Infra.Logger;
 using GenTaskScheduler.Core.Models.Common;
 using GenTaskScheduler.Core.Models.Triggers;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,8 +11,9 @@ using Microsoft.Extensions.Logging;
 
 namespace GenTaskScheduler.Core;
 
-internal class SchedulerLauncher(SchedulerConfiguration config, IServiceProvider serviceProvider, ILogger<ApplicationLogger> logger): ISchedulerLauncher {
-  private readonly SemaphoreSlim _semaphore = new(config.MaxTasksDegreeOfParallelism);
+internal class SchedulerLauncher(IServiceProvider serviceProvider, ILogger<ApplicationLogger> logger): ISchedulerLauncher {
+  private static readonly SchedulerConfiguration _config = GenSchedulerEnvironment.SchedulerConfiguration;
+  private static readonly SemaphoreSlim _semaphore = new(_config.MaxTasksDegreeOfParallelism);
 
   private async Task<List<CurrentScheduledTaskInfo>> RefreshData(CancellationToken cancellationToken) {
     logger.LogInformation("Searching for new tasks");
@@ -60,7 +61,7 @@ internal class SchedulerLauncher(SchedulerConfiguration config, IServiceProvider
         }, cancellationToken);
       }
 
-      await Task.Delay(config.DatabaseCheckInterval, cancellationToken);
+      await Task.Delay(_config.DatabaseCheckInterval, cancellationToken);
     }
   }
 
@@ -91,9 +92,9 @@ internal class SchedulerLauncher(SchedulerConfiguration config, IServiceProvider
       var retryCount = 1;
       var job = TaskSerializer.Deserialize(taskInfo.Task.BlobArgs);
 
-      while(retryCount <= config.MaxRetry) {
+      while(retryCount <= _config.MaxRetry) {
         try {
-          logger.LogInformation("Execution attempt {retryCount} of {MaxRetry}", retryCount, config.MaxRetry);
+          logger.LogInformation("Execution attempt {retryCount} of {MaxRetry}", retryCount, _config.MaxRetry);
           var result = await job.ExecuteJobAsync(cancellationToken);
           history.EndedAt = DateTimeOffset.UtcNow;
           history.Status = ExecutionStatus.Success;
@@ -103,10 +104,10 @@ internal class SchedulerLauncher(SchedulerConfiguration config, IServiceProvider
           taskInfo.Task.ExecutionStatus = ExecutionStatus.Success;
           logger.LogInformation("Execution attempt {retryCount} status: Success", retryCount);
           break;
-        } catch when(config.RetryOnFailure && retryCount < config.MaxRetry - 1) {
-          logger.LogWarning("Failed. Waiting {RetryWaitDelay} to try again.", config.RetryWaitDelay);
+        } catch when(_config.RetryOnFailure && retryCount < _config.MaxRetry - 1) {
+          logger.LogWarning("Failed. Waiting {RetryWaitDelay} to try again.", _config.RetryWaitDelay);
           retryCount++;
-          await Task.Delay(config.RetryWaitDelay, cancellationToken);
+          await Task.Delay(_config.RetryWaitDelay, cancellationToken);
         } catch(Exception finalEx) {
           history.EndedAt = DateTimeOffset.UtcNow;
           history.Status = ExecutionStatus.Failed;
@@ -159,11 +160,13 @@ internal class SchedulerLauncher(SchedulerConfiguration config, IServiceProvider
     var utcNow = DateTimeOffset.UtcNow;
     foreach(var trigger in task.Triggers.Where(t => t.IsValid)) {
       return trigger switch {
-        CronTrigger cron => TriggerEvaluator.ShouldExecuteCronTrigger(cron, utcNow, config),
-        OnceTrigger once => TriggerEvaluator.ShouldExecuteOnceTrigger(once, utcNow, config),
-        CalendarTrigger calendar => TriggerEvaluator.ShouldExecuteCalendarTrigger(calendar, utcNow, config),
-        IntervalTrigger interval => TriggerEvaluator.ShouldExecuteIntervalTrigger(interval, utcNow, config),
-        MonthlyTrigger dwmt => TriggerEvaluator.ShouldExecuteDayWeekMonthTrigger(dwmt, utcNow, config),
+        CronTrigger cron => TriggerEvaluator.ShouldExecuteCronTrigger(cron, utcNow, _config),
+        OnceTrigger once => TriggerEvaluator.ShouldExecuteOnceTrigger(once, utcNow, _config),
+        CalendarTrigger calendar => TriggerEvaluator.ShouldExecuteCalendarTrigger(calendar, utcNow, _config),
+        IntervalTrigger interval => TriggerEvaluator.ShouldExecuteIntervalTrigger(interval, utcNow, _config),
+        MonthlyTrigger monthly => TriggerEvaluator.ShouldExecuteMonthlyTrigger(monthly, utcNow, _config),
+        WeeklyTrigger weekly => TriggerEvaluator.ShouldExecuteWeeklyTrigger(weekly, utcNow, _config),
+        DailyTrigger daily => TriggerEvaluator.ShouldExecuteDailyTrigger(daily, utcNow, _config),
         _ => null
       };
     }
@@ -180,7 +183,7 @@ internal class SchedulerLauncher(SchedulerConfiguration config, IServiceProvider
 
     foreach(var trigger in task.Triggers) {
       switch(trigger) {
-        case OnceTrigger once when once.IsValid && (once.Executed || once.StartsAt < utcNow - config.MarginOfError || once.Executions >= once.MaxExecutions):
+        case OnceTrigger once when once.IsValid && (once.Executed || once.StartsAt < utcNow - _config.MarginOfError || once.Executions >= once.MaxExecutions):
           once.IsValid = false;
           hasChanges = true;
           break;

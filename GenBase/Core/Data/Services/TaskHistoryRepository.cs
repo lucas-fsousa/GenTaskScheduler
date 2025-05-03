@@ -1,7 +1,7 @@
 ﻿using GenTaskScheduler.Core.Abstractions.Repository;
 using GenTaskScheduler.Core.Data.Internal;
 using GenTaskScheduler.Core.Infra.Helper;
-using GenTaskScheduler.Core.Infra.Log;
+using GenTaskScheduler.Core.Infra.Logger;
 using GenTaskScheduler.Core.Models.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

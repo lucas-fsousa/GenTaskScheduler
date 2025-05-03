@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace GenTaskScheduler.Core.Infra;
+namespace GenTaskScheduler.Core.Infra.Configurations;
 
 /// <summary>
 /// Configuration class for the task scheduler.
@@ -17,7 +17,7 @@ public class SchedulerConfiguration {
   /// Defines the wait time between retry attempts in case of task execution failure.
   /// Used only when <see cref="RetryOnFailure"/> is true.
   /// </summary>
-  public TimeSpan RetryWaitDelay { get; set; } = TimeSpan.FromSeconds(30);
+  public TimeSpan RetryWaitDelay { get; set; } = TimeSpan.FromSeconds(15);
 
   /// <summary>
   /// Specifies the maximum number of retry attempts before the task is permanently considered failed.
@@ -31,13 +31,13 @@ public class SchedulerConfiguration {
   /// For example, if the task is scheduled to run at 11:30 PM and the margin of error is 5 minutes, 
   /// it will still be considered valid if executed up to 11:35 PM.
   /// </summary>
-  public TimeSpan MarginOfError { get; set; } = TimeSpan.FromMinutes(5);
+  public TimeSpan MarginOfError { get; set; } = TimeSpan.FromMinutes(1);
 
   /// <summary>
   /// Defines the interval at which the database is checked for new or modified tasks.
-  /// This controls how often the system checks the database for changes, typically to identify tasks to execute. the default value is 1 minute.
+  /// This controls how often the system checks the database for changes, typically to identify tasks to execute. the default value is 30 seconds.
   /// </summary>
-  public TimeSpan DatabaseCheckInterval { get; set; } = TimeSpan.FromMinutes(1);
+  public TimeSpan DatabaseCheckInterval { get; set; } = TimeSpan.FromSeconds(30);
 
   /// <summary>
   /// Specifies the maximum number of scheduler tasks that can be executed in parallel.

@@ -1,20 +1,25 @@
 ﻿using GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger;
+using GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger.Monthly;
+using GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger.SharedSteps;
 using GenTaskScheduler.Core.Enums;
+using GenTaskScheduler.Core.Infra.Helper;
+using GenTaskScheduler.Core.Models.Triggers;
 
 namespace GenTaskScheduler.Core.Infra.Builder.TriggerBuilder;
-public partial class TriggerBuilder: IMonthlyTriggerBuilder {
-  public IMonthlyTriggerBuilder SetDaysOfMonth(params int[] daysOfMonth) {
+public partial class GenSchedulerTriggerBuilder: IMonthOfYearTriggerStep, IMonthlyTriggerBuilder {
+
+  public IMonthlyTriggerBuilder CreateMonthlyTrigger(DateTimeOffset startDate) {
+    _current = new MonthlyTrigger();
+    _current!.InternalSetStartDate(startDate);
+    return this;
+  }
+  public IMonthOfYearTriggerStep SetDaysOfMonth(params int[] daysOfMonth) {
     _current!.InternalSetDaysOfMonth(daysOfMonth);
     return this;
   }
 
-  public IMonthlyTriggerBuilder SetMonthsOfYear(params MonthOfYear[] monthOfYears) {
+  public ICommonTriggerStep SetMonthsOfYear(params MonthOfYear[] monthOfYears) {
     _current!.InternalSetMonthsOfYear(monthOfYears);
-    return this;
-  }
-
-  public IMonthlyTriggerBuilder SetTimeOfDay(TimeSpan time) {
-    _current!.InternalSetTimeOfDay(time);
     return this;
   }
 }

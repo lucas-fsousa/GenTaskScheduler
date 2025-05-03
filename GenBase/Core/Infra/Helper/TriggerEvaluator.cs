@@ -1,4 +1,5 @@
 ﻿using Cronos;
+using GenTaskScheduler.Core.Infra.Configurations;
 using GenTaskScheduler.Core.Models.Triggers;
 
 namespace GenTaskScheduler.Core.Infra.Helper;
@@ -88,9 +89,9 @@ public static class TriggerEvaluator {
   }
 
   /// <summary>
-  /// Checks if a DayWeekMonthTrigger should be executed based on the current time and configuration.
+  /// Checks if a MonthlyTrigger should be executed based on the current time and configuration.
   /// </summary>
-  public static Guid? ShouldExecuteDayWeekMonthTrigger(MonthlyTrigger trigger, DateTimeOffset utcNow, SchedulerConfiguration config) {
+  public static Guid? ShouldExecuteMonthlyTrigger(MonthlyTrigger trigger, DateTimeOffset utcNow, SchedulerConfiguration config) {
     if(!trigger.IsValid)
       return null;
 
@@ -100,7 +101,7 @@ public static class TriggerEvaluator {
     if(!trigger.DaysOfMonth.Split(',').Select(int.Parse).Contains(utcNow.Day))
       return null;
 
-    var scheduledTime = utcNow.Date.Add(trigger.TimeOfDay);
+    var scheduledTime = trigger.TimeOfDay.TimeOnlyToDateTimeOffset(utcNow);
     if(utcNow < scheduledTime)
       return null;
 
@@ -140,6 +141,58 @@ public static class TriggerEvaluator {
 
     return null;
   }
+
+  /// <summary>
+  /// Checks if a DailyTrigger should be executed based on the current time and configuration.
+  /// </summary>
+  public static Guid? ShouldExecuteDailyTrigger(DailyTrigger trigger, DateTimeOffset utcNow, SchedulerConfiguration config) {
+    if(!trigger.IsValid || utcNow < trigger.StartsAt)
+      return null;
+
+    if(trigger.EndsAt is not null && utcNow > trigger.EndsAt.Value)
+      return null;
+
+    if(trigger.MaxExecutions is not null && trigger.Executions >= trigger.MaxExecutions)
+      return null;
+
+    var scheduledTime = trigger.TimeOfDay.TimeOnlyToDateTimeOffset(utcNow);
+    if(utcNow < scheduledTime || utcNow > scheduledTime.Add(config.MarginOfError))
+      return null;
+
+    if(trigger.LastExecution.HasValue && trigger.LastExecution.Value >= scheduledTime)
+      return null;
+
+    return trigger.Id;
+  }
+
+  /// <summary>
+  /// Checks if a WeeklyTrigger should be executed based on the current time and configuration.
+  /// </summary>
+  public static Guid? ShouldExecuteWeeklyTrigger(WeeklyTrigger trigger, DateTimeOffset utcNow, SchedulerConfiguration config) {
+    if(!trigger.IsValid || utcNow < trigger.StartsAt)
+      return null;
+
+    if(trigger.EndsAt is not null && utcNow > trigger.EndsAt.Value)
+      return null;
+
+    if(trigger.MaxExecutions is not null && trigger.Executions >= trigger.MaxExecutions)
+      return null;
+
+    var validDays = trigger.DaysOfWeek.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(d => Enum.Parse<DayOfWeek>(d.Trim(), true));
+
+    if(!validDays.Contains(utcNow.DayOfWeek))
+      return null;
+
+    var scheduledTime = trigger.TimeOfDay.TimeOnlyToDateTimeOffset(utcNow);
+    if(utcNow < scheduledTime || utcNow > scheduledTime.Add(config.MarginOfError))
+      return null;
+
+    if(trigger.LastExecution.HasValue && trigger.LastExecution.Value >= scheduledTime)
+      return null;
+
+    return trigger.Id;
+  }
+
 }
 
 
