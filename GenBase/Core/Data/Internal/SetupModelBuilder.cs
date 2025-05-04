@@ -104,8 +104,6 @@ internal static class SetupModelBuilder {
     builder.Entity<IntervalTrigger>(entity => {
       entity.Property(e => e.Id).ValueGeneratedNever();
       entity.Property(e => e.StartsAt).IsRequired();
-      entity.Property(e => e.RepeatIntervalMinutes).IsRequired();
-      entity.Property(e => e.InitialExecutionTime).IsRequired();
     });
 
     return builder;

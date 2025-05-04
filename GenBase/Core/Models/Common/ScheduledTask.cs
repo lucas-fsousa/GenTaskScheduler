@@ -1,10 +1,16 @@
 ﻿using GenTaskScheduler.Core.Enums;
 using GenTaskScheduler.Core.Models.Triggers;
+using System.Threading.Tasks;
 
 namespace GenTaskScheduler.Core.Models.Common;
 public class ScheduledTask: BaseModel {
   /// <summary> Task name (used for identification) </summary>
   public string Name { get; set; } = string.Empty;
+
+  /// <summary>
+  /// The next execution time of the task
+  /// </summary>
+  public DateTimeOffset NextExecution { get; set; }
 
   /// <summary>
   /// Task state (e.g., running, success, failed, canceled, ready, none)
@@ -29,5 +35,17 @@ public class ScheduledTask: BaseModel {
   public ExecutionStatus DependsOnStatus { get; set; } = ExecutionStatus.None;
   public Guid? DependsOnTaskId { get; set; }
   public ScheduledTask? DependsOnTask { get; set; }
+
+  public bool AvailableToRun() {
+    if(!IsActive || ExecutionStatus == ExecutionStatus.Running || Triggers.Count <= 0)
+      return false;
+
+    if(DependsOnTask is null)
+      return false;
+
+    var cond1 = DependsOnTask.ExecutionStatus != DependsOnStatus;
+    var cond2 = DependsOnTask.ExecutionHistory.Count > 0 && DependsOnTask.ExecutionHistory.Last().Status == DependsOnStatus;
+    return cond1 && cond2;
+  }
 }
 

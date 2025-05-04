@@ -1,3 +1,3 @@
 ﻿namespace GenTaskScheduler.Core.Models.Common;
-internal record CurrentScheduledTaskInfo(ScheduledTask Task, Guid? TriggerId);
+internal readonly record struct CurrentScheduledTaskInfo(ScheduledTask Task, Guid? TriggerId);
 

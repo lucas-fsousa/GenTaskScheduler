@@ -8,6 +8,11 @@ public class CalendarEntry: BaseModel {
   /// </summary>
   public DateTimeOffset ScheduledDateTime { get; set; }
 
+  /// <summary>
+  /// Indicates whether this calendar entry has already been executed.
+  /// </summary>
+  public bool Executed { get; set; }
+
   public Guid CalendarTriggerId { get; set; }
   public CalendarTrigger CalendarTrigger { get; set; } = null!;
 }

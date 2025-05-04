@@ -4,7 +4,10 @@ using GenTaskScheduler.Core.Enums;
 using GenTaskScheduler.Core.Infra.Logger;
 using GenTaskScheduler.Core.Models.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace GenTaskScheduler.Core.Data.Services;
 
@@ -24,7 +27,7 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
 
       if(task.DependsOnTask is not null)
         await AddAsync(task.DependsOnTask, false, cancellationToken);
-      
+
       task.UpdatedAt = DateTimeOffset.UtcNow;
       task.CreatedAt = DateTimeOffset.UtcNow;
       task.ExecutionStatus = ExecutionStatus.Ready;
@@ -34,7 +37,7 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
       var triggers = task.Triggers.ToList();
       task.Triggers.Clear();
       await context.ScheduledTasks.AddAsync(task, cancellationToken);
-      
+
       foreach(var trigger in triggers) {
         await triggerRepository.AddAsync(trigger, false, cancellationToken);
         trigger.TaskId = task.Id;
@@ -64,9 +67,14 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
     }
   }
 
-  public async Task<List<ScheduledTask>> GetAllAsync(CancellationToken cancellationToken = default) {
+  public async Task<List<ScheduledTask>> GetAllAsync(Expression<Func<ScheduledTask, bool>>? filter = null, CancellationToken cancellationToken = default) {
     try {
-      var tasks = await context.ScheduledTasks.ToListAsync(cancellationToken) ?? [];
+      var tasks = new List<ScheduledTask>();
+      if(filter is not null)
+        tasks = await context.ScheduledTasks.Where(filter).ToListAsync(cancellationToken) ?? [];
+      else
+        tasks = await context.ScheduledTasks.ToListAsync(cancellationToken) ?? [];
+
       foreach(var task in tasks) {
         if(task.DependsOnTask is null)
           continue;
@@ -83,7 +91,7 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
 
   public async Task<ScheduledTask?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => await context.ScheduledTasks.FindAsync([id], cancellationToken);
 
-  public async Task UpdateAsync(ScheduledTask task, bool autoCommit = true ,CancellationToken cancellationToken = default) {
+  public async Task UpdateAsync(ScheduledTask task, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
       task.UpdatedAt = DateTimeOffset.UtcNow;
       context.ScheduledTasks.Update(task);
@@ -93,6 +101,21 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
       }
     } catch(Exception ex) {
       logger.LogError(ex, "Error on updating task with Id {Id}", task.Id);
+    }
+  }
+
+  public async Task UpdateAsync(Expression<Func<ScheduledTask, bool>> filter, Expression<Func<SetPropertyCalls<ScheduledTask>, SetPropertyCalls<ScheduledTask>>> updateExpression, bool autoCommit = true, CancellationToken cancellationToken = default) {
+    try {
+      var rowsModifieds = await context.ScheduledTasks.Where(filter).ExecuteUpdateAsync(updateExpression, cancellationToken);
+      if(autoCommit) {
+        await CommitAsync(cancellationToken);
+        if(rowsModifieds > 0) {
+          logger.LogInformation("Tasks updated successfully. {rowsModifieds} rows affected", rowsModifieds);
+          return;
+        }
+      }
+    } catch(Exception ex) {
+      logger.LogError(ex, "Error on updating tasks by filter");
     }
   }
 

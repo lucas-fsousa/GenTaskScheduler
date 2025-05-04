@@ -5,7 +5,6 @@ using GenTaskScheduler.Core.Infra.Configurations;
 using GenTaskScheduler.Core.Infra.Helper;
 using GenTaskScheduler.Core.Infra.Logger;
 using GenTaskScheduler.Core.Models.Common;
-using GenTaskScheduler.Core.Models.Triggers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -15,30 +14,56 @@ internal class SchedulerLauncher(IServiceProvider serviceProvider, ILogger<Appli
   private static readonly SchedulerConfiguration _config = GenSchedulerEnvironment.SchedulerConfiguration;
   private static readonly SemaphoreSlim _semaphore = new(_config.MaxTasksDegreeOfParallelism);
 
+  private static async Task SetTasksToWaitStatus(ITaskRepository taskRepository, CancellationToken cancellationToken) {
+    await taskRepository.UpdateAsync(x =>
+      x.IsActive &&
+      (x.ExecutionStatus != ExecutionStatus.Running && x.ExecutionStatus != ExecutionStatus.Waiting) &&
+      (x.NextExecution > DateTimeOffset.UtcNow.AddMinutes(-1) || x.NextExecution == DateTimeOffset.MinValue),
+      set => set
+      .SetProperty(p => p.ExecutionStatus, ExecutionStatus.Waiting)
+      .SetProperty(p => p.UpdatedAt, DateTimeOffset.UtcNow),
+      cancellationToken: cancellationToken
+    );
+
+    await taskRepository.CommitAsync(cancellationToken);
+  }
+
+  private async Task UpdateMissedTasks(ITaskRepository taskRepository, IEnumerable<ScheduledTask> tasks, CancellationToken cancellationToken) {
+    if(!tasks.Any())
+      return;
+
+    logger.LogWarning("Missed tasks: {missedTasks}", string.Join(", ", tasks.Select(x => x.Id)));
+    foreach(var task in tasks) {
+      task.ExecutionStatus = ExecutionStatus.Missfire;
+      await taskRepository.UpdateAsync(task, cancellationToken: cancellationToken);
+      await taskRepository.CommitAsync(cancellationToken);
+    }
+
+  }
+
   private async Task<List<CurrentScheduledTaskInfo>> RefreshData(CancellationToken cancellationToken) {
-    logger.LogInformation("Searching for new tasks");
-    using var scope = serviceProvider.CreateScope();
-    var taskRepository = scope.ServiceProvider.GetRequiredService<ITaskRepository>();
-    var tasks = await taskRepository.GetAllAsync(cancellationToken);
+    try {
+      using var scope = serviceProvider.CreateScope();
+      var taskRepository = scope.ServiceProvider.GetRequiredService<ITaskRepository>();
 
-    var filteredList = tasks
-      .Where(t => t.IsActive && t.ExecutionStatus != ExecutionStatus.Running && t.Triggers.Count > 0)
-      .Where(t => {
-        if(t.DependsOnTask is null)
-          return true;
+      await SetTasksToWaitStatus(taskRepository, cancellationToken);
+      var tasks = await taskRepository.GetAllAsync(t => t.ExecutionStatus == ExecutionStatus.Waiting, cancellationToken);
 
-        var parent = tasks.FirstOrDefault(d => d.Id == t.DependsOnTaskId);
-        if(parent is null)
-          return false;
+      var filteredList = tasks
+        .Where(st => st.AvailableToRun())
+        .Select(st => new CurrentScheduledTaskInfo(st, st.Triggers.FirstOrDefault(tg => tg.IsEligibleToRun())?.Id))
+        .Where(t => t.TriggerId is not null);
 
-        return parent.ExecutionStatus == t.DependsOnStatus &&
-          parent.ExecutionHistory.Count > 0 &&
-          parent.ExecutionHistory.Last().Status == t.DependsOnStatus;
-      })
-      .Select(t => new CurrentScheduledTaskInfo(t, MatchTrigger(t)))
-      .Where(t => t.TriggerId is not null);
+      if(filteredList.Any()) {
+        var missed = tasks.ExceptBy(filteredList.Select(x => x.Task.Id), x => x.Id);
+        await UpdateMissedTasks(taskRepository, tasks, cancellationToken);
+      }
 
-    return [.. filteredList];
+      return [.. filteredList];
+    } catch(Exception ex) {
+      logger.LogError(ex, "Error while searching for new tasks");
+      return [];
+    }
   }
 
   public async Task ExecuteAsync(CancellationToken cancellationToken = default) {
@@ -69,11 +94,12 @@ internal class SchedulerLauncher(IServiceProvider serviceProvider, ILogger<Appli
     using var scope = serviceProvider.CreateScope();
     var taskRepository = scope.ServiceProvider.GetRequiredService<ITaskRepository>();
     var historyRepository = scope.ServiceProvider.GetRequiredService<ITaskHistoryRepository>();
+    var triggerRepository = scope.ServiceProvider.GetRequiredService<ITriggerRepository>();
 
-    await ExecuteWithTrackingAsync(taskInfo, taskRepository, historyRepository, cancellationToken);
+    await ExecuteWithTrackingAsync(taskInfo, taskRepository, historyRepository, triggerRepository, cancellationToken);
   }
 
-  private async Task ExecuteWithTrackingAsync(CurrentScheduledTaskInfo taskInfo, ITaskRepository taskRepository, ITaskHistoryRepository historyRepository, CancellationToken cancellationToken) {
+  private async Task ExecuteWithTrackingAsync(CurrentScheduledTaskInfo taskInfo, ITaskRepository taskRepository, ITaskHistoryRepository historyRepository, ITriggerRepository triggerRepository, CancellationToken cancellationToken) {
     var history = new TaskExecutionHistory {
       TaskId = taskInfo.Task.Id,
       StartedAt = DateTimeOffset.UtcNow,
@@ -121,14 +147,10 @@ internal class SchedulerLauncher(IServiceProvider serviceProvider, ILogger<Appli
         }
       }
 
-      baseTrigger.LastExecution = DateTimeOffset.UtcNow;
-      baseTrigger.Executions++;
-      switch(baseTrigger) {
-        case OnceTrigger once:
-          once.Executed = true;
-          break;
-        default:
-          break;
+      if(baseTrigger.ShouldAutoDelete && baseTrigger.EndsAt.HasValue && baseTrigger.EndsAt > DateTimeOffset.UtcNow) {
+        await triggerRepository.DeleteAsync(baseTrigger.Id, cancellationToken: cancellationToken);
+      } else {
+        baseTrigger.UpdateTriggerState();
       }
 
       if(taskInfo.Task.AutoDelete) {
@@ -150,69 +172,5 @@ internal class SchedulerLauncher(IServiceProvider serviceProvider, ILogger<Appli
 
     logger.LogInformation("Saving execution history");
     await historyRepository.AddAsync(history, cancellationToken: cancellationToken);
-    await ValidateAndPruneTriggersAsync(taskInfo.Task, taskRepository, cancellationToken);
-  }
-
-  private Guid? MatchTrigger(ScheduledTask task) {
-    if(!task.IsActive || task.Triggers is null || task.Triggers.Count <= 0)
-      return null;
-
-    var utcNow = DateTimeOffset.UtcNow;
-    foreach(var trigger in task.Triggers.Where(t => t.IsValid)) {
-      return trigger switch {
-        CronTrigger cron => TriggerEvaluator.ShouldExecuteCronTrigger(cron, utcNow, _config),
-        OnceTrigger once => TriggerEvaluator.ShouldExecuteOnceTrigger(once, utcNow, _config),
-        CalendarTrigger calendar => TriggerEvaluator.ShouldExecuteCalendarTrigger(calendar, utcNow, _config),
-        IntervalTrigger interval => TriggerEvaluator.ShouldExecuteIntervalTrigger(interval, utcNow, _config),
-        MonthlyTrigger monthly => TriggerEvaluator.ShouldExecuteMonthlyTrigger(monthly, utcNow, _config),
-        WeeklyTrigger weekly => TriggerEvaluator.ShouldExecuteWeeklyTrigger(weekly, utcNow, _config),
-        DailyTrigger daily => TriggerEvaluator.ShouldExecuteDailyTrigger(daily, utcNow, _config),
-        _ => null
-      };
-    }
-
-    return null;
-  }
-
-  private async Task ValidateAndPruneTriggersAsync(ScheduledTask task, ITaskRepository taskRepository, CancellationToken cancellationToken) {
-    var utcNow = DateTimeOffset.UtcNow;
-    var hasChanges = false;
-
-    if(!task.IsActive || task.Triggers == null || task.Triggers.Count == 0)
-      return;
-
-    foreach(var trigger in task.Triggers) {
-      switch(trigger) {
-        case OnceTrigger once when once.IsValid && (once.Executed || once.StartsAt < utcNow - _config.MarginOfError || once.Executions >= once.MaxExecutions):
-          once.IsValid = false;
-          hasChanges = true;
-          break;
-
-        case IntervalTrigger interval when interval.MaxExecutions.HasValue && interval.Executions >= interval.MaxExecutions:
-          interval.IsValid = false;
-          hasChanges = true;
-          break;
-
-        case CronTrigger cron when cron.EndsAt.HasValue && cron.EndsAt.Value < utcNow:
-          cron.IsValid = false;
-          hasChanges = true;
-          break;
-
-        case CalendarTrigger calendar when calendar.EndsAt.HasValue && calendar.EndsAt.Value < utcNow:
-          calendar.IsValid = false;
-          hasChanges = true;
-          break;
-
-        case MonthlyTrigger dwmt when dwmt.EndsAt.HasValue && dwmt.EndsAt.Value < utcNow:
-          dwmt.IsValid = false;
-          hasChanges = true;
-          break;
-      }
-    }
-
-    if(hasChanges) {
-      logger.LogInformation("Invalid or expired trigger identified for taskId {Id}. Applying update and removing from execution list.", task.Id);
-      await taskRepository.UpdateAsync(task, cancellationToken: cancellationToken);
-    }
   }
 }

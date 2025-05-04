@@ -1,4 +1,5 @@
-﻿using GenTaskScheduler.Core.Models.Common;
+﻿using GenTaskScheduler.Core.Infra.Configurations;
+using GenTaskScheduler.Core.Models.Common;
 
 namespace GenTaskScheduler.Core.Models.Triggers;
 public abstract class BaseTrigger : BaseModel {
@@ -66,4 +67,33 @@ public abstract class BaseTrigger : BaseModel {
   /// The specific time of day when the task should be executed.
   /// </summary>
   public TimeOnly TimeOfDay { get; set; }
+
+  /// <summary>
+  /// Calculates the next execution time based on the current time and the trigger's settings.
+  /// </summary>
+  /// <returns> The <see cref="DateTimeOffset"/> of the next run. </returns>
+  public abstract DateTimeOffset? GetNextExecution();
+
+  /// <summary>
+  /// Checks if the trigger can be fired based on its settings.
+  /// </summary>
+  /// <returns>Returns true if trigger criteria are met.</returns>
+  public abstract bool IsEligibleToRun();
+
+  /// <summary>
+  /// Updates the trigger's state (validity, execution count, last execution, etc.) based on its type and conditions.
+  /// This method should be called by the Launcher after the trigger is executed.
+  /// </summary>
+  public abstract void UpdateTriggerState();
+
+  /// <summary>
+  /// Checks if the current time is within the margin of error for late execution.
+  /// </summary>
+  /// <param name="expectedExecution">Date/time when execution should happen</param>
+  /// <returns>Returns true if it is within the time window allowed for execution</returns>
+  protected static bool IsWithinMargin(DateTimeOffset expectedExecution) {
+    var now = DateTimeOffset.UtcNow;
+    var margin = GenSchedulerEnvironment.SchedulerConfiguration.LateExecutionTolerance;
+    return now >= expectedExecution && now <= expectedExecution + margin;
+  }
 }

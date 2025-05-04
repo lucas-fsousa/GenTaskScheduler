@@ -8,6 +8,7 @@ namespace GenTaskScheduler.Core.Infra.Configurations;
 /// delay between retries, and the margin of error for task execution.
 /// </summary>
 public class SchedulerConfiguration {
+  private TimeSpan _databaseCheckInterval = TimeSpan.FromSeconds(30);
   /// <summary>
   /// Determines whether the scheduler should attempt to re-execute the task in case of failure. The default value is false.
   /// </summary>
@@ -26,18 +27,28 @@ public class SchedulerConfiguration {
   public int MaxRetry { get; set; } = 3;
 
   /// <summary>
-  /// Defines the margin of error for the task execution. If the task doesn't execute within this margin of time
-  /// after the desired execution time, it will be considered missed.
-  /// For example, if the task is scheduled to run at 11:30 PM and the margin of error is 5 minutes, 
-  /// it will still be considered valid if executed up to 11:35 PM.
+  /// Defines the maximum allowed delay for a trigger to still be considered valid for execution.
+  /// This tolerance is only applied to late executions, allowing the system to process a trigger
+  /// slightly after its scheduled time in case of minor delays (e.g., processing backlog or clock drift).
+  /// It does not permit early executions or affect the calculated next execution time.
   /// </summary>
-  public TimeSpan MarginOfError { get; set; } = TimeSpan.FromMinutes(1);
+  public TimeSpan LateExecutionTolerance { get; set; } = TimeSpan.FromMinutes(1);
 
   /// <summary>
   /// Defines the interval at which the database is checked for new or modified tasks.
-  /// This controls how often the system checks the database for changes, typically to identify tasks to execute. the default value is 30 seconds.
+  /// This controls how often the system checks the database for changes, typically to identify tasks to execute. the default value is 30 seconds (max 30 seconds).
   /// </summary>
-  public TimeSpan DatabaseCheckInterval { get; set; } = TimeSpan.FromSeconds(30);
+  public TimeSpan DatabaseCheckInterval {
+    get {
+      return _databaseCheckInterval;
+    }
+    set {
+      if(value > TimeSpan.FromSeconds(30))
+        throw new ArgumentOutOfRangeException(nameof(value), "DatabaseCheckInterval cannot be greater than 30 seconds.");
+
+      _databaseCheckInterval = value;
+    }
+  }
 
   /// <summary>
   /// Specifies the maximum number of scheduler tasks that can be executed in parallel.

@@ -65,6 +65,7 @@ internal static class InternalHelperExtensions {
     if(startsAt < DateTimeOffset.UtcNow)
       throw new ArgumentException("Start date cannot be in the past.", nameof(startsAt));
 
+    current!.NextExecution = startsAt;
     current!.StartsAt = startsAt;
     return current;
   }
