@@ -11,23 +11,24 @@ internal static class SetupModelBuilder {
       .HasDiscriminator<string>("TriggerType")
       .HasValue<CronTrigger>("Cron")
       .HasValue<OnceTrigger>("Once")
-      .HasValue<IntervalTrigger>("Interval")
       .HasValue<DailyTrigger>("Daily")
       .HasValue<WeeklyTrigger>("Weekly")
       .HasValue<MonthlyTrigger>("Monthly")
+      .HasValue<IntervalTrigger>("Interval")
       .HasValue<CalendarTrigger>("Calendar");
 
     modelBuilder.Entity<BaseTrigger>(entity => {
       entity.Property(e => e.Id).ValueGeneratedNever();
       entity.Property(e => e.TriggerDescription).HasMaxLength(100);
+      entity.Property(e => e.LastTriggeredStatus).HasMaxLength(20);
     });
       
     modelBuilder.SetupCronTrigger();
     modelBuilder.SetupOnceTrigger();
-    modelBuilder.SetupIntervalTrigger();
     modelBuilder.SetupDailyTrigger();
     modelBuilder.SetupWeeklyTrigger();
     modelBuilder.SetupMonthlyTrigger();
+    modelBuilder.SetupIntervalTrigger();
     modelBuilder.SetupCalendarTrigger();
     modelBuilder.SetupExecutionHistory();
   }
@@ -38,8 +39,9 @@ internal static class SetupModelBuilder {
       entity.Property(e => e.StartedAt).IsRequired();
       entity.Property(e => e.EndedAt).IsRequired();
       entity.Property(e => e.Status).IsRequired();
-      entity.Property(e => e.ErrorMessage).HasMaxLength(1000);
-      
+      entity.Property(e => e.ErrorMessage);
+      entity.Property(e => e.Status).HasMaxLength(100);
+
       entity.Ignore(e => e.ResultObject);
     });
 
@@ -68,6 +70,7 @@ internal static class SetupModelBuilder {
       entity.Property(e => e.AutoDelete).IsRequired();
       entity.Property(e => e.IsActive).IsRequired();
       entity.Property(e => e.BlobArgs).IsRequired();
+      entity.Property(e => e.ExecutionStatus).HasMaxLength(15).IsRequired();
 
       entity.HasOne(e => e.DependsOnTask)
         .WithMany()

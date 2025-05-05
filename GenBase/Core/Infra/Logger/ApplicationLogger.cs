@@ -30,8 +30,8 @@ public class ApplicationLogger(string categoryName): ILogger {
     Console.ForegroundColor = GetColor(logLevel);
     Console.Write(logLevel.ToString().ToUpper());
     Console.ForegroundColor = originalColor;
-    Console.Write($" {DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm:ss}]: {categoryName}{scopePrefix}\n\t{formatter(state, exception)}");
-    Console.WriteLine(exception is null? "" : $"\n\t{FormatException(exception)}");
+    Console.Write($" {DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm:ss}]: {categoryName}{scopePrefix}\n  {formatter(state, exception)}");
+    Console.WriteLine(exception is null? "" : $"\n    {FormatException(exception)}");
   }
 
   private static ConsoleColor GetColor(LogLevel level) => level switch {

@@ -55,7 +55,7 @@ public partial class GenSchedulerTriggerBuilder:
 
     _current.Task = _task;
     _current.TaskId = _task.Id;
-    _current.NextExecution = _current.GetNextExecution();
+    _current.NextExecution = _current.StartsAt;
     _task.Triggers.Add(_current);
     _current = null;
   }

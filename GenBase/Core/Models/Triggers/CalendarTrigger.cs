@@ -1,4 +1,5 @@
-﻿using GenTaskScheduler.Core.Models.Common;
+﻿using GenTaskScheduler.Core.Infra.Configurations;
+using GenTaskScheduler.Core.Models.Common;
 
 namespace GenTaskScheduler.Core.Models.Triggers;
 
@@ -52,5 +53,22 @@ public class CalendarTrigger: BaseTrigger {
     if(entry is not null)
       CalendarEntries.First(x => x.Id == entry.Id).Executed = true;
   }
+
+  /// <inheritdoc />
+  public override bool IsMissedTrigger() {
+    if(!IsValid || MaxExecutions is int max && Executions >= max)
+      return false;
+
+    var next = CalendarEntries.OrderBy(e => e.ScheduledDateTime).FirstOrDefault(e => e.ScheduledDateTime > LastExecution);
+    if(next == null)
+      return false;
+
+    var now = DateTimeOffset.UtcNow;
+    var expected = next.ScheduledDateTime;
+    var tolerance = GenSchedulerEnvironment.SchedulerConfiguration.LateExecutionTolerance;
+
+    return now > expected && now <= expected + tolerance;
+  }
+
 }
 

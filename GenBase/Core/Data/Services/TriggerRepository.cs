@@ -2,15 +2,18 @@
 using GenTaskScheduler.Core.Data.Internal;
 using GenTaskScheduler.Core.Enums;
 using GenTaskScheduler.Core.Infra.Logger;
+using GenTaskScheduler.Core.Models.Common;
 using GenTaskScheduler.Core.Models.Triggers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
 
 namespace GenTaskScheduler.Core.Data.Services;
 public class TriggerRepository(GenTaskSchedulerDbContext context, ILogger<ApplicationLogger> logger): ITriggerRepository {
   public async Task AddAsync(BaseTrigger trigger, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
-      trigger.LastTriggeredStatus = GenTriggerTriggeredStatus.NotTriggered;
+      trigger.LastTriggeredStatus = GenTriggerTriggeredStatus.NotTriggered.ToString();
       trigger.CreatedAt = DateTimeOffset.UtcNow;
       trigger.UpdatedAt = DateTimeOffset.UtcNow;
       trigger.Executions = 0;
@@ -78,6 +81,22 @@ public class TriggerRepository(GenTaskSchedulerDbContext context, ILogger<Applic
       logger.LogError(ex, "Error on updating trigger with Id {Id}", trigger.Id);
     }
   }
+
+  public async Task UpdateAsync(Expression<Func<BaseTrigger, bool>> filter, Expression<Func<SetPropertyCalls<BaseTrigger>, SetPropertyCalls<BaseTrigger>>> updateExpression, bool autoCommit = true, CancellationToken cancellationToken = default) {
+    try {
+      var rowsModifieds = await context.BaseTriggers.Where(filter).ExecuteUpdateAsync(updateExpression, cancellationToken);
+      if(autoCommit) {
+        await CommitAsync(cancellationToken);
+        if(rowsModifieds > 0) {
+          logger.LogInformation("Triggers updated successfully. {rowsModifieds} rows affected", rowsModifieds);
+          return;
+        }
+      }
+    } catch(Exception ex) {
+      logger.LogError(ex, "Error on updating tasks by filter");
+    }
+  }
+
   public void Dispose() {
     GC.SuppressFinalize(this);
     context.Dispose();

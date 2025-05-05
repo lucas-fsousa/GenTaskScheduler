@@ -28,10 +28,10 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
 
       task.UpdatedAt = DateTimeOffset.UtcNow;
       task.CreatedAt = DateTimeOffset.UtcNow;
-      task.ExecutionStatus = Enums.GenSchedulerTaskStatus.Ready;
+      task.ExecutionStatus = Enums.GenSchedulerTaskStatus.Ready.ToString();
       task.DependsOnTaskId = task.DependsOnTask?.Id ?? task.DependsOnTaskId;
       task.DependsOnTask = null;
-      task.NextExecution = task.Triggers.OrderBy(t => t.NextExecution).First().NextExecution ?? DateTimeOffset.MinValue;
+      task.NextExecution = task.Triggers.OrderBy(t => t.NextExecution).First(t => t.NextExecution is not null).NextExecution ?? DateTimeOffset.MinValue;
 
       var triggers = task.Triggers.ToList();
       task.Triggers.Clear();
@@ -95,7 +95,7 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
       foreach(var item in task.Triggers)
         context.BaseTriggers.Entry(item).State = EntityState.Unchanged;
 
-      task.NextExecution = task.Triggers.OrderBy(t => t.NextExecution).First().NextExecution ?? DateTimeOffset.MinValue;
+      task.NextExecution = task.Triggers.OrderBy(t => t.NextExecution).FirstOrDefault(t => t.NextExecution is not null)?.NextExecution ?? DateTimeOffset.MinValue;
       task.UpdatedAt = DateTimeOffset.UtcNow;
       context.ScheduledTasks.Update(task);
       if(autoCommit) {

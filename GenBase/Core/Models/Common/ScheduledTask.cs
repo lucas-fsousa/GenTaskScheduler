@@ -18,7 +18,7 @@ public class ScheduledTask: BaseModel {
   /// <summary>
   /// Task state (e.g., running, waiting, ready)
   /// </summary>
-  public GenSchedulerTaskStatus ExecutionStatus { get; set; } = GenSchedulerTaskStatus.Ready;
+  public string ExecutionStatus { get; set; } = GenSchedulerTaskStatus.Ready.ToString();
 
   /// <summary> If true, the task will be deleted automatically after completion </summary>
   public bool AutoDelete { get; set; }
@@ -38,7 +38,7 @@ public class ScheduledTask: BaseModel {
   /// <summary>
   /// Task history status that this task depends on.
   /// </summary>
-  public GenTaskHistoryStatus DependsOnStatus { get; set; } = GenTaskHistoryStatus.None;
+  public string DependsOnStatus { get; set; } = string.Empty;
 
   /// <summary>
   /// Task ID that this task depends on.
@@ -55,13 +55,13 @@ public class ScheduledTask: BaseModel {
   /// </summary>
   /// <returns>returns true if the evaluation criteria are met.</returns>
   public bool AvailableToRun() {
-    if(!IsActive || ExecutionStatus == GenSchedulerTaskStatus.Running || Triggers.Count <= 0)
+    if(!IsActive || ExecutionStatus == GenSchedulerTaskStatus.Running.ToString() || Triggers.Count <= 0)
       return false;
 
     if(DependsOnTask is null)
       return true;
 
-    return DependsOnTask.ExecutionHistory.Count > 0 && DependsOnTask.ExecutionHistory.Last().Status == DependsOnStatus;
+    return DependsOnTask.ExecutionHistory.Count > 0 && DependsOnStatus.Split(',').Contains(DependsOnTask.ExecutionHistory.Last().Status);
   }
 }
 

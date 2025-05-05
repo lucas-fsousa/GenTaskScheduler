@@ -1,4 +1,4 @@
-﻿using GenTaskScheduler.Core.Models.Common;
+﻿using GenTaskScheduler.Core.Infra.Configurations;
 
 namespace GenTaskScheduler.Core.Models.Triggers;
 
@@ -28,5 +28,18 @@ public class OnceTrigger: BaseTrigger {
     Executions++;
     IsValid = false;
     NextExecution = null;
+  }
+
+  /// <inheritdoc />
+  public override bool IsMissedTrigger() {
+    if(!IsValid || MaxExecutions is int max && Executions >= max)
+      return false;
+
+    if(NextExecution is not DateTimeOffset expected)
+      return false;
+
+    var now = DateTimeOffset.UtcNow;
+    var tolerance = GenSchedulerEnvironment.SchedulerConfiguration.LateExecutionTolerance;
+    return now > expected && now <= expected + tolerance;
   }
 }

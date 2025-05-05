@@ -51,7 +51,7 @@ public abstract class BaseTrigger : BaseModel {
   /// <summary>
   /// The last status of the trigger after it was executed
   /// </summary>
-  public GenTriggerTriggeredStatus LastTriggeredStatus { get; set; } = GenTriggerTriggeredStatus.NotTriggered;
+  public string LastTriggeredStatus { get; set; } = GenTriggerTriggeredStatus.NotTriggered.ToString();
 
   /// <summary>
   /// Represents the last execution time of the trigger
@@ -103,7 +103,26 @@ public abstract class BaseTrigger : BaseModel {
   /// <returns>Returns true if it is within the time window allowed for execution</returns>
   protected static bool IsWithinMargin(DateTimeOffset expectedExecution) {
     var now = DateTimeOffset.UtcNow;
-    var margin = GenSchedulerEnvironment.SchedulerConfiguration.LateExecutionTolerance;
-    return now >= expectedExecution && now <= expectedExecution + margin;
+    var tolerance = GenSchedulerEnvironment.SchedulerConfiguration.LateExecutionTolerance;
+    return Math.Abs((now - expectedExecution).TotalSeconds) <= tolerance.TotalSeconds;
   }
+
+  /// <summary>
+  /// Determines if the trigger has missed its expected execution but is still within the allowed tolerance window.
+  /// </summary>
+  /// <returns>True if the trigger missed execution within tolerance; otherwise, false.</returns>
+  public virtual bool IsMissedTrigger() {
+    if(!IsValid || MaxExecutions is int max && Executions >= max)
+      return false;
+
+    var expected = GetNextExecution();
+    if(!expected.HasValue)
+      return false;
+
+    var now = DateTimeOffset.UtcNow;
+    var tolerance = GenSchedulerEnvironment.SchedulerConfiguration.LateExecutionTolerance;
+
+    return now > expected.Value + tolerance;
+  }
+
 }

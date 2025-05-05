@@ -23,7 +23,7 @@ public class TaskExecutionHistory {
   public Guid? TriggerId { get; set; }
 
   /// <summary>The type of result for the execution (success, failed, canceled, etc.)</summary>
-  public GenTaskHistoryStatus Status { get; set; }
+  public string Status { get; set; } = string.Empty;
 
   /// <summary>UTC time when execution started</summary>
   public DateTimeOffset StartedAt { get; set; }

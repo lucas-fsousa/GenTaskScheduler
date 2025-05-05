@@ -1,4 +1,4 @@
-﻿using GenTaskScheduler.Core.Infra.Configurations;
+﻿using Cronos;
 
 namespace GenTaskScheduler.Core.Models.Triggers;
 public class CronTrigger: BaseTrigger {
@@ -7,21 +7,26 @@ public class CronTrigger: BaseTrigger {
   /// </summary>
   public string CronExpression { get; set; } = null!;
 
+  ///<inheritdoc />
   public override DateTimeOffset? GetNextExecution() {
     if(string.IsNullOrWhiteSpace(CronExpression))
       return null;
 
-    var cron = Cronos.CronExpression.Parse(CronExpression);
+    if(!Cronos.CronExpression.TryParse(CronExpression, out CronExpression cron))
+      return null;
+
     return cron.GetNextOccurrence(DateTimeOffset.UtcNow, TimeZoneInfo.Utc);
   }
 
+  ///<inheritdoc />
   public override bool IsEligibleToRun() {
     if(string.IsNullOrWhiteSpace(CronExpression))
       return false;
 
-    var cron = Cronos.CronExpression.Parse(CronExpression);
-    var lastOccurrence = cron.GetNextOccurrence(DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1), TimeZoneInfo.Utc);
+    if(!Cronos.CronExpression.TryParse(CronExpression, out CronExpression cron))
+      return false;
 
+    var lastOccurrence = cron.GetNextOccurrence(DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1), TimeZoneInfo.Utc);
     if(!lastOccurrence.HasValue)
       return false;
 

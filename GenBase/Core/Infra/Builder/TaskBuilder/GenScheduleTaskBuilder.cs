@@ -83,12 +83,21 @@ public class GenScheduleTaskBuilder:
   public IScheduledTaskBuilderOptions NotDepends() => this;
 
   /// <inheritdoc />
-  /// <exception cref="ArgumentException"></exception>
   public IScheduledTaskBuilderOptions WithStatus(GenTaskHistoryStatus status) {
-    if(status == GenTaskHistoryStatus.None)
+    _task.DependsOnStatus = status.ToString();
+    return this;
+  }
+
+  /// <inheritdoc />
+  /// <exception cref="ArgumentException"></exception>
+  public IScheduledTaskBuilderOptions WithStatus(params GenTaskHistoryStatus[] status) {
+    if(status.Length <= 0)
+      throw new ArgumentException("Status array cannot be empty", nameof(status));
+
+    if(status.Any(s => s == GenTaskHistoryStatus.None))
       throw new ArgumentException("Status cannot be None", nameof(status));
 
-    _task.DependsOnStatus = status;
+    _task.DependsOnStatus = string.Join(',', status.Select(x => x.ToString()));
     return this;
   }
 
@@ -99,7 +108,7 @@ public class GenScheduleTaskBuilder:
       throw new InvalidOperationException("A job must be defined using WithJob()");
 
     if(_task.Triggers.Count == 0)
-      throw new InvalidOperationException("At least one trigger must be defined");
+      throw new InvalidOperationException($"At least one trigger must be defined. Use {nameof(IScheduledTaskBuilderTriggers.ConfigureTriggers)} method");
 
     _task.BlobArgs = TaskSerializer.Serialize(_job);
     return _task;
@@ -109,8 +118,7 @@ public class GenScheduleTaskBuilder:
   /// <exception cref="ArgumentNullException"></exception>
   public IScheduledTaskBuilderDependsOn ConfigureTriggers(Action<ITriggerBuilderStart> configure) {
     ArgumentNullException.ThrowIfNull(configure);
-    var builder = GenSchedulerTriggerBuilder.Start(_task);
-    configure(builder);
+    configure(GenSchedulerTriggerBuilder.Start(_task));
     return this;
   }
 }

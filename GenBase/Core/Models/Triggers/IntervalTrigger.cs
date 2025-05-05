@@ -3,7 +3,7 @@
 /// A trigger that fires repeatedly at a fixed interval starting from a given start time.
 /// </summary>
 public class IntervalTrigger: BaseTrigger {
-  
+
   /// <inheritdoc />
   public override DateTimeOffset? GetNextExecution() {
     if(!IsValid || ExecutionInterval is null || ExecutionInterval.Value.TotalMinutes <= 0)
@@ -17,15 +17,16 @@ public class IntervalTrigger: BaseTrigger {
     if(EndsAt.HasValue && now > EndsAt.Value)
       return null;
 
-    var elapsed = now - StartsAt;
-    var intervalsPassed = (int)Math.Floor(elapsed.TotalMinutes / ExecutionInterval.Value.TotalMinutes);
-    var next = StartsAt.AddMinutes((intervalsPassed + 1) * ExecutionInterval.Value.TotalMinutes);
+    var baseTime = LastExecution ?? StartsAt;
+    var next = baseTime.Add(ExecutionInterval.Value);
 
     if(EndsAt.HasValue && next > EndsAt.Value)
       return null;
 
     return next;
   }
+
+
 
   /// <inheritdoc />
   public override bool IsEligibleToRun() {
@@ -42,14 +43,18 @@ public class IntervalTrigger: BaseTrigger {
   /// <inheritdoc />
   public override void UpdateTriggerState() {
     Executions++;
-    UpdatedAt = DateTimeOffset.UtcNow;
     LastExecution = DateTimeOffset.UtcNow;
+    UpdatedAt = LastExecution.Value;
     NextExecution = GetNextExecution();
 
-    if(MaxExecutions.HasValue && Executions >= MaxExecutions)
+    if(MaxExecutions.HasValue && Executions >= MaxExecutions) {
       IsValid = false;
+      Executions = MaxExecutions.Value;
+    }
+      
 
-    if(EndsAt.HasValue && NextExecution > EndsAt.Value)
+    if(EndsAt.HasValue && NextExecution.HasValue && NextExecution > EndsAt.Value)
       IsValid = false;
   }
+
 }
