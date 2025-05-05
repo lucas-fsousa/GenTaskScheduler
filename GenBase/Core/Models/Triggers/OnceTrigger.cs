@@ -27,5 +27,6 @@ public class OnceTrigger: BaseTrigger {
     UpdatedAt = DateTimeOffset.UtcNow;
     Executions++;
     IsValid = false;
+    NextExecution = null;
   }
 }

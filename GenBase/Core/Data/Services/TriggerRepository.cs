@@ -1,5 +1,6 @@
 ﻿using GenTaskScheduler.Core.Abstractions.Repository;
 using GenTaskScheduler.Core.Data.Internal;
+using GenTaskScheduler.Core.Enums;
 using GenTaskScheduler.Core.Infra.Logger;
 using GenTaskScheduler.Core.Models.Triggers;
 using Microsoft.EntityFrameworkCore;
@@ -9,13 +10,13 @@ namespace GenTaskScheduler.Core.Data.Services;
 public class TriggerRepository(GenTaskSchedulerDbContext context, ILogger<ApplicationLogger> logger): ITriggerRepository {
   public async Task AddAsync(BaseTrigger trigger, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
+      trigger.LastTriggeredStatus = GenTriggerTriggeredStatus.NotTriggered;
       trigger.CreatedAt = DateTimeOffset.UtcNow;
       trigger.UpdatedAt = DateTimeOffset.UtcNow;
       trigger.Executions = 0;
-      trigger.NextExecution = null;
       trigger.TaskId = trigger.Task?.Id ?? trigger.TaskId;
       trigger.Task = null!;
-      
+
       if(trigger.TaskId == Guid.Empty)
         throw new ArgumentException("TaskId from trigger cannot be empty", nameof(trigger));
       

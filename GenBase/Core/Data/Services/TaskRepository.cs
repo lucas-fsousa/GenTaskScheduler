@@ -1,13 +1,11 @@
 ﻿using GenTaskScheduler.Core.Abstractions.Repository;
 using GenTaskScheduler.Core.Data.Internal;
-using GenTaskScheduler.Core.Enums;
 using GenTaskScheduler.Core.Infra.Logger;
 using GenTaskScheduler.Core.Models.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
-using System.Threading.Tasks;
 
 namespace GenTaskScheduler.Core.Data.Services;
 
@@ -30,9 +28,10 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
 
       task.UpdatedAt = DateTimeOffset.UtcNow;
       task.CreatedAt = DateTimeOffset.UtcNow;
-      task.ExecutionStatus = ExecutionStatus.Ready;
+      task.ExecutionStatus = Enums.GenSchedulerTaskStatus.Ready;
       task.DependsOnTaskId = task.DependsOnTask?.Id ?? task.DependsOnTaskId;
       task.DependsOnTask = null;
+      task.NextExecution = task.Triggers.OrderBy(t => t.NextExecution).First().NextExecution ?? DateTimeOffset.MinValue;
 
       var triggers = task.Triggers.ToList();
       task.Triggers.Clear();
@@ -93,12 +92,17 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
 
   public async Task UpdateAsync(ScheduledTask task, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
+      foreach(var item in task.Triggers)
+        context.BaseTriggers.Entry(item).State = EntityState.Unchanged;
+
+      task.NextExecution = task.Triggers.OrderBy(t => t.NextExecution).First().NextExecution ?? DateTimeOffset.MinValue;
       task.UpdatedAt = DateTimeOffset.UtcNow;
       context.ScheduledTasks.Update(task);
       if(autoCommit) {
         await CommitAsync(cancellationToken);
         logger.LogInformation("Task with Id {Id} updated successfully", task.Id);
       }
+
     } catch(Exception ex) {
       logger.LogError(ex, "Error on updating task with Id {Id}", task.Id);
     }

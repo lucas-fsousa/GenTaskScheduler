@@ -1,8 +1,11 @@
 ﻿using GenTaskScheduler.Core.Enums;
 using GenTaskScheduler.Core.Models.Triggers;
-using System.Threading.Tasks;
 
 namespace GenTaskScheduler.Core.Models.Common;
+
+/// <summary>
+/// Represents a scheduled task in the system.
+/// </summary>
 public class ScheduledTask: BaseModel {
   /// <summary> Task name (used for identification) </summary>
   public string Name { get; set; } = string.Empty;
@@ -13,9 +16,9 @@ public class ScheduledTask: BaseModel {
   public DateTimeOffset NextExecution { get; set; }
 
   /// <summary>
-  /// Task state (e.g., running, success, failed, canceled, ready, none)
+  /// Task state (e.g., running, waiting, ready)
   /// </summary>
-  public ExecutionStatus ExecutionStatus { get; set; } = ExecutionStatus.Ready;
+  public GenSchedulerTaskStatus ExecutionStatus { get; set; } = GenSchedulerTaskStatus.Ready;
 
   /// <summary> If true, the task will be deleted automatically after completion </summary>
   public bool AutoDelete { get; set; }
@@ -32,20 +35,33 @@ public class ScheduledTask: BaseModel {
   /// <summary>Execution logs associated with this task</summary>
   public ICollection<TaskExecutionHistory> ExecutionHistory { get; set; } = [];
 
-  public ExecutionStatus DependsOnStatus { get; set; } = ExecutionStatus.None;
+  /// <summary>
+  /// Task history status that this task depends on.
+  /// </summary>
+  public GenTaskHistoryStatus DependsOnStatus { get; set; } = GenTaskHistoryStatus.None;
+
+  /// <summary>
+  /// Task ID that this task depends on.
+  /// </summary>
   public Guid? DependsOnTaskId { get; set; }
+
+  /// <summary>
+  /// Task that this task depends on.
+  /// </summary>
   public ScheduledTask? DependsOnTask { get; set; }
 
+  /// <summary>
+  /// Checks if the task is available to run based on its status and dependencies.
+  /// </summary>
+  /// <returns>returns true if the evaluation criteria are met.</returns>
   public bool AvailableToRun() {
-    if(!IsActive || ExecutionStatus == ExecutionStatus.Running || Triggers.Count <= 0)
+    if(!IsActive || ExecutionStatus == GenSchedulerTaskStatus.Running || Triggers.Count <= 0)
       return false;
 
     if(DependsOnTask is null)
-      return false;
+      return true;
 
-    var cond1 = DependsOnTask.ExecutionStatus != DependsOnStatus;
-    var cond2 = DependsOnTask.ExecutionHistory.Count > 0 && DependsOnTask.ExecutionHistory.Last().Status == DependsOnStatus;
-    return cond1 && cond2;
+    return DependsOnTask.ExecutionHistory.Count > 0 && DependsOnTask.ExecutionHistory.Last().Status == DependsOnStatus;
   }
 }
 

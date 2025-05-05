@@ -6,12 +6,17 @@ using GenTaskScheduler.Core.Models.Triggers;
 
 namespace GenTaskScheduler.Core.Infra.Builder.TriggerBuilder;
 public partial class GenSchedulerTriggerBuilder: ICalendarTriggerBuilder {
+
+  ///<inheritdoc/>
   public ICalendarTriggerBuilder CreateCalendarTrigger(DateTimeOffset startDate) {
     _current = new CalendarTrigger();
     _current!.InternalSetStartDate(startDate);
     return this;
   }
 
+  ///<inheritdoc/>
+  /// <exception cref="ArgumentException"></exception>
+  /// <exception cref="InvalidOperationException"></exception>
   public ICommonTriggerStep AddCalendarEntries(List<CalendarEntry> entries) {
     if(entries == null || entries.Count == 0)
       throw new ArgumentException("Calendar entries cannot be null or empty", nameof(entries));
@@ -27,6 +32,7 @@ public partial class GenSchedulerTriggerBuilder: ICalendarTriggerBuilder {
     return this;
   }
 
+  ///<inheritdoc/>
   public ICommonTriggerStep AddCalendarEntry(CalendarEntry entry) {
     AddCalendarEntries([entry]);
     return this;

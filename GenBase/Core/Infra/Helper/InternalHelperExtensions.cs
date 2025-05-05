@@ -149,40 +149,5 @@ internal static class InternalHelperExtensions {
 
     return current;
   }
-
-  /// <summary>
-  /// Converts a <see cref="TimeOnly"/> object to a <see cref="DateTimeOffset"/> object with the specified date offset.
-  /// </summary>
-  /// <param name="time">TimeOnly value to parse</param>
-  /// <param name="date">Date offset reference</param>
-  /// <returns>A new <see cref="DateTimeOffset"/></returns>
-  public static DateTimeOffset TimeOnlyToDateTimeOffset(this TimeOnly time, DateTimeOffset date) {
-    return new DateTimeOffset(
-        date.Year,
-        date.Month,
-        date.Day,
-        time.Hour,
-        time.Minute,
-        time.Second,
-        TimeSpan.Zero
-    );
-  }
-
-  /// <summary>
-  /// Converts a TimeOnly object to a  <see cref="DateTime"/> object with the specified date.
-  /// </summary>
-  /// <param name="time">TimeOnly value to parse</param>
-  /// <param name="date">Date reference</param>
-  /// <returns>A new <see cref="DateTime"/></returns>
-  public static DateTime TimeOnlyToDateTime(this TimeOnly time, DateTime date) {
-    return new DateTime(
-        date.Year,
-        date.Month,
-        date.Day,
-        time.Hour,
-        time.Minute,
-        time.Second
-    );
-  }
 }
 

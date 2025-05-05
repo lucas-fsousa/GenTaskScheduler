@@ -23,7 +23,7 @@ public static class GenTaskSchedulerCoreExtension {
       services.AddScoped<ITaskRepository, TaskRepository>();
       services.AddScoped<ITriggerRepository, TriggerRepository>();
       services.AddScoped<ITaskHistoryRepository, TaskHistoryRepository>();
-      services.AddSingleton<ISchedulerLauncher, SchedulerLauncher>();
+      services.AddSingleton<ISchedulerLauncher, GenSchedulerLauncher>();
       services.AddHostedService<GenTaskSchedulerHostedService>();
     }
 

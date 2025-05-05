@@ -9,6 +9,6 @@ public interface IIntervalTriggerBuilder  {
   /// Sets the repeat interval in minutes for the trigger.
   /// </summary>
   /// <param name="minutes">Time in minutes to repeat trigger firing.</param>
-  /// <returns>ICommonTriggerStep</returns>
+  /// <returns><see cref="ICommonTriggerStep"/></returns>
   ICommonTriggerStep SetRepeatIntervalMinutes(int minutes);
 }

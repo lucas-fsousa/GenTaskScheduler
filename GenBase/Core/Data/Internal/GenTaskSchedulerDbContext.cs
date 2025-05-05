@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenTaskScheduler.Core.Data.Internal;
 
+/// <inheritdoc />
 public abstract class GenTaskSchedulerDbContext: DbContext {
   protected GenTaskSchedulerDbContext(DbContextOptions options) : base(options) { }
   protected GenTaskSchedulerDbContext() { }
@@ -20,6 +21,7 @@ public abstract class GenTaskSchedulerDbContext: DbContext {
   public DbSet<TaskExecutionHistory> TaskExecutionsHistory { get; set; }
   public DbSet<CalendarEntry> CalendarEntries { get; set; }
 
+  /// <inheritdoc/>
   protected override void OnModelCreating(ModelBuilder modelBuilder) {
     modelBuilder.SetupScheduledTask();
     modelBuilder.SetupTriggerMappings();

@@ -3,12 +3,21 @@ using Microsoft.Extensions.Logging;
 using System.Text;
 
 namespace GenTaskScheduler.Core.Infra.Logger;
+
+/// <summary>
+/// ApplicationLogger is a custom logger implementation for the GenTaskScheduler application.
+/// </summary>
+/// <param name="categoryName">The category name for logger</param>
 public class ApplicationLogger(string categoryName): ILogger {
   private static readonly SchedulerConfiguration _config = GenSchedulerEnvironment.SchedulerConfiguration;
+
+  /// <inheritdoc/>
   public IDisposable? BeginScope<TState>(TState state) where TState : notnull => new SchedulerLogScope(state);
 
+  /// <inheritdoc/>
   public bool IsEnabled(LogLevel logLevel) => _config.EnableLogging && logLevel >= _config.MinimumLogLevel;
 
+  /// <inheritdoc/>
   public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
     if(!IsEnabled(logLevel))
       return;

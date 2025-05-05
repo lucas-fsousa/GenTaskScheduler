@@ -9,7 +9,10 @@ using GenTaskScheduler.Core.Models.Triggers;
 
 namespace GenTaskScheduler.Core.Infra.Builder.TaskBuilder;
 
-public class ScheduleTaskBuilder:
+/// <summary>
+/// Builder class for creating scheduled tasks.
+/// </summary>
+public class GenScheduleTaskBuilder:
     IScheduledTaskBuilderStart,
     IScheduledTaskBuilderJob,
     IScheduledTaskBuilderTriggers,
@@ -20,44 +23,45 @@ public class ScheduleTaskBuilder:
   private readonly ScheduledTask _task = new();
   private IJob? _job;
 
-  private ScheduleTaskBuilder(string name) {
+  private GenScheduleTaskBuilder(string name) {
     _task.Name = name;
     _task.CreatedAt = DateTimeOffset.UtcNow;
   }
 
+  /// <summary>
+  /// Creates an instance of the IScheduledTaskBuilderStart implementation with a specified name..
+  /// </summary>
+  /// <param name="name">The task name to set</param>
+  /// <returns> <see cref="IScheduledTaskBuilderStart"/></returns>
+  /// <exception cref="ArgumentException"></exception>
   public static IScheduledTaskBuilderStart Create(string name) {
     if(string.IsNullOrEmpty(name))
       throw new ArgumentException("Task name cannot be null or empty", nameof(name));
 
-    return new ScheduleTaskBuilder(name);
+    return new GenScheduleTaskBuilder(name);
   }
 
+  /// <inheritdoc />
+  /// <exception cref="ArgumentNullException"></exception>
   public IScheduledTaskBuilderTriggers WithJob(IJob job) {
     _job = job ?? throw new ArgumentNullException(nameof(job));
     return this;
   }
 
-  //public IScheduledTaskBuilderDependsOn AddTrigger<T>(Action<T> configure) where T : BaseTrigger {
-  //  var trigger = Activator.CreateInstance(typeof(T)) as T ??
-  //    throw new InvalidOperationException($"Failed to instantiate trigger of type '{typeof(T).Name}'. Ensure it has a parameterless constructor and is not abstract.");
-  //  configure?.Invoke(trigger);
-  //  _task.Triggers.Add(trigger);
-  //  return this;
-  //}
-
+  /// <inheritdoc />
   public IScheduledTaskBuilderOptions SetAutoDelete(bool value) {
     _task.AutoDelete = value;
     return this;
   }
 
+  /// <inheritdoc />
   public IScheduledTaskBuilderOptions SetIsActive(bool value) {
     _task.IsActive = value;
     return this;
   }
 
-  public IScheduledTaskBuilderTriggers Done() => this;
-
-
+  /// <inheritdoc />
+  /// <exception cref="ArgumentException"></exception>
   public IScheduledTaskBuilderDependsOnWithStatus DependsOn(Guid taskId) {
     if(taskId == Guid.Empty)
       throw new ArgumentException("Task ID cannot be empty", nameof(taskId));
@@ -66,6 +70,8 @@ public class ScheduleTaskBuilder:
     return this;
   }
 
+  /// <inheritdoc />
+  /// <exception cref="ArgumentNullException"></exception>
   public IScheduledTaskBuilderDependsOnWithStatus DependsOn(ScheduledTask task) {
     ArgumentNullException.ThrowIfNull(task, nameof(task));
     _task.DependsOnTask = task;
@@ -73,16 +79,21 @@ public class ScheduleTaskBuilder:
     return this;
   }
 
+  /// <inheritdoc />
   public IScheduledTaskBuilderOptions NotDepends() => this;
 
-  public IScheduledTaskBuilderOptions WithStatus(ExecutionStatus status) {
-    if(status == ExecutionStatus.None)
+  /// <inheritdoc />
+  /// <exception cref="ArgumentException"></exception>
+  public IScheduledTaskBuilderOptions WithStatus(GenTaskHistoryStatus status) {
+    if(status == GenTaskHistoryStatus.None)
       throw new ArgumentException("Status cannot be None", nameof(status));
 
     _task.DependsOnStatus = status;
     return this;
   }
 
+  /// <inheritdoc />
+  /// <exception cref="InvalidOperationException"></exception>
   public ScheduledTask Build() {
     if(_job == null)
       throw new InvalidOperationException("A job must be defined using WithJob()");
@@ -91,16 +102,11 @@ public class ScheduleTaskBuilder:
       throw new InvalidOperationException("At least one trigger must be defined");
 
     _task.BlobArgs = TaskSerializer.Serialize(_job);
-
-    foreach(var trigger in _task.Triggers) {
-      trigger.TaskId = _task.Id;
-      if(trigger is OnceTrigger)
-        trigger.MaxExecutions = 1;
-    }
-
     return _task;
   }
 
+  /// <inheritdoc />
+  /// <exception cref="ArgumentNullException"></exception>
   public IScheduledTaskBuilderDependsOn ConfigureTriggers(Action<ITriggerBuilderStart> configure) {
     ArgumentNullException.ThrowIfNull(configure);
     var builder = GenSchedulerTriggerBuilder.Start(_task);

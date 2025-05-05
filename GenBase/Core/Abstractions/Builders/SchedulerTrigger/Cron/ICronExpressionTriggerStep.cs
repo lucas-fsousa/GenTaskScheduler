@@ -10,6 +10,6 @@ public interface ICronExpressionTriggerStep {
   /// Sets the cron expression for the trigger.
   /// </summary>
   /// <param name="expression">Cron expression for execution evaluation</param>
-  /// <returns>ITriggerCommonStep</returns>
+  /// <returns><see cref="ICommonTriggerStep"/></returns>
   ICommonTriggerStep SetCronExpression(string expression);
 }

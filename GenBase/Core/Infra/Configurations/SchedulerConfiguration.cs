@@ -9,6 +9,7 @@ namespace GenTaskScheduler.Core.Infra.Configurations;
 /// </summary>
 public class SchedulerConfiguration {
   private TimeSpan _databaseCheckInterval = TimeSpan.FromSeconds(30);
+  
   /// <summary>
   /// Determines whether the scheduler should attempt to re-execute the task in case of failure. The default value is false.
   /// </summary>

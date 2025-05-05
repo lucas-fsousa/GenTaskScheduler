@@ -6,12 +6,17 @@ using GenTaskScheduler.Core.Models.Triggers;
 
 namespace GenTaskScheduler.Core.Infra.Builder.TriggerBuilder;
 public partial class GenSchedulerTriggerBuilder: ICronExpressionTriggerStep {
+
+  /// <inheritdoc/>
   public ICronExpressionTriggerStep CreateCronTrigger(DateTimeOffset startDate) {
     _current = new CronTrigger();
     _current!.InternalSetStartDate(startDate);
     return this;
   }
 
+  /// <inheritdoc/>
+  /// <exception cref="ArgumentException"></exception>
+  /// <exception cref="InvalidOperationException"></exception>
   public ICommonTriggerStep SetCronExpression(string expression) {
     if(string.IsNullOrWhiteSpace(expression))
       throw new ArgumentException("Cron expression cannot be null or empty", nameof(expression));

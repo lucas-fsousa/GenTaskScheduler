@@ -9,6 +9,8 @@ using Microsoft.Extensions.Logging;
 namespace GenTaskScheduler.Core.Data.Services;
 
 public class TaskHistoryRepository(GenTaskSchedulerDbContext context, ILogger<ApplicationLogger> logger): ITaskHistoryRepository {
+
+  ///<inheritdoc />
   public async Task<IEnumerable<TaskExecutionHistory>> GetHistoryByTaskIdAsync(Guid taskId, CancellationToken cancellationToken = default) {
     try {
       var tasks = await context.TaskExecutionsHistory
@@ -26,6 +28,7 @@ public class TaskHistoryRepository(GenTaskSchedulerDbContext context, ILogger<Ap
     }
   }
 
+  ///<inheritdoc />
   public async Task<TaskExecutionHistory?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) {
     try {
       var task = await context.TaskExecutionsHistory.FindAsync([id], cancellationToken);
@@ -39,6 +42,8 @@ public class TaskHistoryRepository(GenTaskSchedulerDbContext context, ILogger<Ap
     }
   }
 
+  ///<inheritdoc />
+  ///<exception cref="ArgumentNullException"></exception>"
   public async Task AddAsync(TaskExecutionHistory history, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
       if(history is null)
@@ -55,6 +60,7 @@ public class TaskHistoryRepository(GenTaskSchedulerDbContext context, ILogger<Ap
     }
   }
 
+  ///<inheritdoc />
   public async Task DeleteAsync(Guid id, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
       var history = await GetByIdAsync(id, cancellationToken) ?? throw new ArgumentException($"History with ID {id} not found", nameof(id));
@@ -69,8 +75,10 @@ public class TaskHistoryRepository(GenTaskSchedulerDbContext context, ILogger<Ap
     }
   }
 
+  ///<inheritdoc />
   public async Task CommitAsync(CancellationToken cancellationToken = default) => await context.SaveChangesAsync(cancellationToken);
 
+  ///<inheritdoc />
   public void Dispose() {
     GC.SuppressFinalize(this);
     context.Dispose();

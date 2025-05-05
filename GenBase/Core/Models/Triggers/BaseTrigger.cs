@@ -1,7 +1,12 @@
-﻿using GenTaskScheduler.Core.Infra.Configurations;
+﻿using GenTaskScheduler.Core.Enums;
+using GenTaskScheduler.Core.Infra.Configurations;
 using GenTaskScheduler.Core.Models.Common;
 
 namespace GenTaskScheduler.Core.Models.Triggers;
+
+/// <summary>
+/// Base class for all triggers in the task scheduler.
+/// </summary>
 public abstract class BaseTrigger : BaseModel {
   /// <summary>
   /// ID of the task associated with this trigger
@@ -42,6 +47,11 @@ public abstract class BaseTrigger : BaseModel {
   /// Indicates if the trigger is valid and can be executed
   /// </summary>
   public bool IsValid { get; set; } = true;
+
+  /// <summary>
+  /// The last status of the trigger after it was executed
+  /// </summary>
+  public GenTriggerTriggeredStatus LastTriggeredStatus { get; set; } = GenTriggerTriggeredStatus.NotTriggered;
 
   /// <summary>
   /// Represents the last execution time of the trigger

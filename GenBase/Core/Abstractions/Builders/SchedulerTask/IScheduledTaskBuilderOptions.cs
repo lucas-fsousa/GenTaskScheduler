@@ -11,20 +11,20 @@ public interface IScheduledTaskBuilderOptions {
   /// Set whether the task should be automatically deleted after completion.
   /// </summary>
   /// <param name="value">Flag value to de set</param>
-  /// <returns>IScheduledTaskBuilderOptions</returns>
+  /// <returns><see cref="IScheduledTaskBuilderOptions"/></returns>
   IScheduledTaskBuilderOptions SetAutoDelete(bool value);
 
   /// <summary>
   /// Set whether the task is active or not.
   /// </summary>
   /// <param name="value">Flag value to de set</param>
-  /// <returns>IScheduledTaskBuilderOptions</returns>
+  /// <returns><see cref="IScheduledTaskBuilderOptions"/></returns>
   IScheduledTaskBuilderOptions SetIsActive(bool value);
 
   /// <summary>
   /// Finalize the task configuration and return the built ScheduledTask.
   /// </summary>
-  /// <returns>Scheduled Task configured</returns>
+  /// <returns>An <see cref="ScheduledTask"/> configured</returns>
   ScheduledTask Build();
 }
 
