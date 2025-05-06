@@ -10,6 +10,8 @@ using System.Linq.Expressions;
 namespace GenTaskScheduler.Core.Data.Services;
 
 public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<ApplicationLogger> logger, ITriggerRepository triggerRepository): ITaskRepository {
+
+  ///<inheritdoc/>
   public async Task AddAsync(ScheduledTask task, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
       if(task is null)
@@ -51,8 +53,10 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
     }
   }
 
+  ///<inheritdoc/>
   public async Task CommitAsync(CancellationToken cancellationToken = default) => await context.SaveChangesAsync(cancellationToken);
 
+  ///<inheritdoc/>
   public async Task DeleteAsync(Guid id, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
       var task = await GetByIdAsync(id, cancellationToken) ?? throw new ArgumentException($"Task with ID {id} not found", nameof(id));
@@ -66,6 +70,7 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
     }
   }
 
+  ///<inheritdoc/>
   public async Task<List<ScheduledTask>> GetAllAsync(Expression<Func<ScheduledTask, bool>>? filter = null, CancellationToken cancellationToken = default) {
     try {
       var tasks = new List<ScheduledTask>();
@@ -88,8 +93,10 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
     }
   }
 
+  ///<inheritdoc/>
   public async Task<ScheduledTask?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => await context.ScheduledTasks.FindAsync([id], cancellationToken);
 
+  ///<inheritdoc/>
   public async Task UpdateAsync(ScheduledTask task, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
       foreach(var item in task.Triggers)
@@ -108,6 +115,7 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
     }
   }
 
+  ///<inheritdoc/>
   public async Task UpdateAsync(Expression<Func<ScheduledTask, bool>> filter, Expression<Func<SetPropertyCalls<ScheduledTask>, SetPropertyCalls<ScheduledTask>>> updateExpression, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
       var rowsModifieds = await context.ScheduledTasks.Where(filter).ExecuteUpdateAsync(updateExpression, cancellationToken);
@@ -122,6 +130,23 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
       logger.LogError(ex, "Error on updating tasks by filter");
     }
   }
+
+  ///<inheritdoc/>
+  public async Task DeleteAsync(Expression<Func<ScheduledTask, bool>> filter, bool autoCommit = true, CancellationToken cancellationToken = default) {
+    try {
+      var rowsModifieds = await context.ScheduledTasks.Where(filter).ExecuteDeleteAsync(cancellationToken);
+      if(autoCommit) {
+        await CommitAsync(cancellationToken);
+        if(rowsModifieds > 0) {
+          logger.LogInformation("Tasks deleted successfully. {rowsModifieds} rows affected", rowsModifieds);
+          return;
+        }
+      }
+    } catch(Exception ex) {
+      logger.LogError(ex, "Error on delete tasks by filter");
+    }
+  }
+
 
   public void Dispose() {
     GC.SuppressFinalize(this);

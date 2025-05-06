@@ -12,4 +12,5 @@ public interface ITriggerRepository : IDisposable {
   Task UpdateAsync(BaseTrigger trigger, bool autoCommit = true, CancellationToken cancellationToken = default);
   Task UpdateAsync(Expression<Func<BaseTrigger, bool>> filter, Expression<Func<SetPropertyCalls<BaseTrigger>, SetPropertyCalls<BaseTrigger>>> updateExpression, bool autoCommit = true, CancellationToken cancellationToken = default);
   Task CommitAsync(CancellationToken cancellationToken = default);
+  Task DeleteAsync(Expression<Func<BaseTrigger, bool>> filter, bool autoCommit = true, CancellationToken cancellationToken = default);
 }

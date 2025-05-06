@@ -8,7 +8,8 @@ using GenTaskScheduler.Core.Models.Common;
 using GenTaskScheduler.Core.Models.Triggers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Threading;
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 
 namespace GenTaskScheduler.Core;
 
@@ -48,25 +49,66 @@ internal class GenSchedulerLauncher(IServiceProvider serviceProvider, ILogger<Ap
   }
 
   /// <summary>
-  /// Responsible for managing task status. Updates the status to "Waiting" in the window up to 1 minute before the expected date/time for execution.
+  /// Responsible for managing task status. 
+  /// Updates the status to "Waiting" in the window up to 1 minute before the expected date/time for execution.
+  /// Updates the status to "Ready" if the task is stuck for some reason, thus preventing a new execution from happening.
   /// </summary>
   /// <param name="taskRepository">Task repository instance for data update.</param>
   /// <param name="cancellationToken">Token for managing and propagating the cancellation request.</param>
   /// <returns></returns>
-  private static async Task SetTasksToWaitStatus(ITaskRepository taskRepository, CancellationToken cancellationToken) {
-    var minRange = DateTimeOffset.UtcNow.AddMinutes(-1);
-    var maxRange = DateTimeOffset.UtcNow;
-    await taskRepository.UpdateAsync(x =>
-      x.IsActive &&
-      !_invalidStatusTopUpdate.Contains(x.ExecutionStatus) &&
-      x.NextExecution >= minRange &&
-      x.NextExecution <= maxRange &&
-      x.UpdatedAt < minRange,
-      set => set
-      .SetProperty(p => p.ExecutionStatus, GenSchedulerTaskStatus.Waiting.ToString())
-      .SetProperty(p => p.UpdatedAt, minRange),
-      cancellationToken: cancellationToken
-    );
+  private async Task InternalRequiredUpdateTaskStatus(ITaskRepository taskRepository, CancellationToken cancellationToken) {
+    var now = DateTimeOffset.UtcNow;
+    var minRange = now.AddMinutes(-1);
+    var tolerance = GenSchedulerEnvironment.SchedulerConfiguration.LateExecutionTolerance + TimeSpan.FromMinutes(1);
+    var allTasks = await taskRepository.GetAllAsync(cancellationToken: cancellationToken);
+    var inactives = allTasks.Where(x => !x.IsActive).Select(x => x.Id).ToList();
+
+    var waitingStatusIds = allTasks
+      .Where(x =>
+        !_invalidStatusTopUpdate.Contains(x.ExecutionStatus) &&
+        x.NextExecution >= minRange &&
+        x.NextExecution <= now &&
+        x.UpdatedAt < minRange)
+      .Select(x => x.Id)
+      .ToList();
+
+    var stuckRunningIds = allTasks
+      .Where(x =>
+        x.ExecutionStatus == GenSchedulerTaskStatus.Running.ToString() &&
+        (
+          (x.MaxExecutionTime != TimeSpan.Zero && now - x.LastExecution > x.MaxExecutionTime + tolerance) ||
+          (x.MaxExecutionTime == TimeSpan.Zero && x.NextExecution < now - tolerance)
+        ))
+      .Select(x => x.Id)
+      .ToList();
+
+    if(_config.AutoDeleteInactiveTasks && inactives.Count > 0) {
+      waitingStatusIds = [.. waitingStatusIds.Except(inactives)];
+      stuckRunningIds = [.. stuckRunningIds.Except(inactives)];
+
+      logger.LogInformation("AutoDeleteInactiveTasks enabled. Deleting inactive tasks: {ids}", string.Join(", ", inactives));
+      await taskRepository.DeleteAsync(x => inactives.Contains(x.Id), false, cancellationToken);
+    }
+    
+    if(waitingStatusIds.Count > 0) {
+      await taskRepository.UpdateAsync(x => waitingStatusIds.Contains(x.Id),
+        set => set
+          .SetProperty(p => p.ExecutionStatus, GenSchedulerTaskStatus.Waiting.ToString())
+          .SetProperty(p => p.UpdatedAt, minRange),
+        false,
+        cancellationToken
+      );
+    }
+
+    if(stuckRunningIds.Count > 0) {
+      await taskRepository.UpdateAsync(x => stuckRunningIds.Contains(x.Id),
+        set => set
+          .SetProperty(p => p.ExecutionStatus, GenSchedulerTaskStatus.Ready.ToString())
+          .SetProperty(p => p.UpdatedAt, now),
+        false,
+        cancellationToken
+      );
+    }
 
     await taskRepository.CommitAsync(cancellationToken);
   }
@@ -79,7 +121,12 @@ internal class GenSchedulerLauncher(IServiceProvider serviceProvider, ILogger<Ap
   /// <param name="cancellationToken">Token for managing and propagating the cancellation request.</param>
   /// <returns></returns>
   private static async Task SetTriggersToMissedStatus(List<BaseTrigger> triggers, ITriggerRepository triggerRepository, CancellationToken cancellationToken) {
-    await triggerRepository.UpdateAsync(f => triggers.Select(x => x.Id).Contains(f.Id), set =>
+    var triggerIds = triggers.Select(x => x.Id).ToList();
+
+    if(triggerIds.Count == 0)
+      return;
+
+    await triggerRepository.UpdateAsync(f => triggerIds.Contains(f.Id), set =>
       set.SetProperty(p => p.UpdatedAt, DateTimeOffset.UtcNow)
       .SetProperty(p => p.LastTriggeredStatus, GenTriggerTriggeredStatus.Missfire.ToString()),
       cancellationToken: cancellationToken
@@ -97,7 +144,7 @@ internal class GenSchedulerLauncher(IServiceProvider serviceProvider, ILogger<Ap
       var taskRepository = scope.ServiceProvider.GetRequiredService<ITaskRepository>();
       var triggerRepository = scope.ServiceProvider.GetRequiredService<ITriggerRepository>();
 
-      await SetTasksToWaitStatus(taskRepository, cancellationToken);
+      await InternalRequiredUpdateTaskStatus(taskRepository, cancellationToken);
       var tasks = await taskRepository.GetAllAsync(t => t.ExecutionStatus == GenSchedulerTaskStatus.Waiting.ToString() && t.IsActive, cancellationToken);
 
       var filteredList = tasks
@@ -147,13 +194,17 @@ internal class GenSchedulerLauncher(IServiceProvider serviceProvider, ILogger<Ap
   /// <returns></returns>
   private async Task ExecuteWithTrackingAsync(CurrentScheduledTaskInfo taskInfo, ITaskRepository taskRepository, ITaskHistoryRepository historyRepository, ITriggerRepository triggerRepository, CancellationToken cancellationToken) {
     var baseTrigger = taskInfo.Task.Triggers.First(t => t.Id == taskInfo.TriggerId);
-    try {
-      if(taskInfo.Task.ExecutionStatus == GenSchedulerTaskStatus.Running.ToString()) {
-        logger.LogWarning("Task {Id} is already running. Skipping execution.", taskInfo.Task.Id);
-        return;
-      }
 
+    if(taskInfo.Task.ExecutionStatus == GenSchedulerTaskStatus.Running.ToString()) {
+      logger.LogWarning("Task {Id} is already running. Skipping execution.", taskInfo.Task.Id);
+      return;
+    }
+
+    var stopWatch = new Stopwatch();
+    try {
+      stopWatch.Start();
       taskInfo.Task.ExecutionStatus = GenSchedulerTaskStatus.Running.ToString();
+      taskInfo.Task.LastExecution = DateTimeOffset.UtcNow;
       await taskRepository.UpdateAsync(taskInfo.Task, cancellationToken: cancellationToken);
 
       baseTrigger.LastTriggeredStatus = GenTriggerTriggeredStatus.Success.ToString();
@@ -165,12 +216,25 @@ internal class GenSchedulerLauncher(IServiceProvider serviceProvider, ILogger<Ap
 
       while(baseTrigger.IsEligibleToRun() && !cancellationToken.IsCancellationRequested) {
         var history = await RecurringExecution(taskInfo, job, cancellationToken);
-
         logger.LogInformation("Saving execution history");
         await historyRepository.AddAsync(history, cancellationToken: cancellationToken);
         baseTrigger.UpdateTriggerState();
         await Task.Delay(baseTrigger.ExecutionInterval ?? TimeSpan.Zero, cancellationToken);
+        if(stopWatch.Elapsed > taskInfo.Task.MaxExecutionTime && taskInfo.Task.MaxExecutionTime != TimeSpan.Zero)
+          throw new TimeoutException("Aborted task execution due to timeout");
       }
+    } catch(TimeoutException timeoutEx) {
+      var history = new TaskExecutionHistory {
+        TaskId = taskInfo.Task.Id,
+        TriggerId = taskInfo.TriggerId,
+        StartedAt = DateTimeOffset.UtcNow,
+        EndedAt = DateTimeOffset.UtcNow,
+        Status = GenTaskHistoryStatus.Canceled.ToString(),
+        ErrorMessage = timeoutEx.Message
+      };
+
+      await historyRepository.AddAsync(history, cancellationToken: cancellationToken);
+      logger.LogCritical(timeoutEx, "Task execution exceeded the maximum time of {timeout}. Task will be canceled.", taskInfo.Task.MaxExecutionTime);
     } catch(Exception ex) {
       var history = new TaskExecutionHistory {
         TaskId = taskInfo.Task.Id,
@@ -185,6 +249,7 @@ internal class GenSchedulerLauncher(IServiceProvider serviceProvider, ILogger<Ap
       logger.LogError(ex, "Error while executing task {Id}", taskInfo.Task.Id);
     } finally {
       taskInfo.Task.ExecutionStatus = GenSchedulerTaskStatus.Ready.ToString();
+      stopWatch.Stop();
     }
 
     #region[UPDATE TRIGGER]
@@ -205,7 +270,6 @@ internal class GenSchedulerLauncher(IServiceProvider serviceProvider, ILogger<Ap
     }
     #endregion
   }
-
 
   /// <summary>
   /// A helper to handle recurring runs that need individual tracking.

@@ -1,4 +1,5 @@
 ﻿using GenTaskScheduler.Core.Models.Common;
+using System.Linq.Expressions;
 
 namespace GenTaskScheduler.Core.Abstractions.Repository;
 
@@ -46,4 +47,6 @@ internal interface ITaskHistoryRepository : IDisposable {
   /// <param name="cancellationToken">Token for async executions</param>
   /// <returns></returns>
   Task CommitAsync(CancellationToken cancellationToken = default);
+
+  Task DeleteAsync(Expression<Func<TaskExecutionHistory, bool>> filter, bool autoCommit = true, CancellationToken cancellationToken = default);
 }

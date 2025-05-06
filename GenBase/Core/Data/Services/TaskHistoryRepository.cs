@@ -5,6 +5,7 @@ using GenTaskScheduler.Core.Infra.Logger;
 using GenTaskScheduler.Core.Models.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
 
 namespace GenTaskScheduler.Core.Data.Services;
 
@@ -72,6 +73,22 @@ public class TaskHistoryRepository(GenTaskSchedulerDbContext context, ILogger<Ap
       }
     } catch(Exception ex) {
       logger.LogError(ex, "Error on deleting task history for ID {Id}", id);
+    }
+  }
+
+  ///<inheritdoc />
+  public async Task DeleteAsync(Expression<Func<TaskExecutionHistory, bool>> filter, bool autoCommit = true, CancellationToken cancellationToken = default) {
+    try {
+      var rowsModifieds = await context.TaskExecutionsHistory.Where(filter).ExecuteDeleteAsync(cancellationToken);
+      if(autoCommit) {
+        await CommitAsync(cancellationToken);
+        if(rowsModifieds > 0) {
+          logger.LogInformation("Tasks history deleted successfully. {rowsModifieds} rows affected", rowsModifieds);
+          return;
+        }
+      }
+    } catch(Exception ex) {
+      logger.LogError(ex, "Error on delete tasks history by filter");
     }
   }
 

@@ -12,4 +12,5 @@ public interface ITaskRepository : IDisposable {
   Task DeleteAsync(Guid id, bool autoCommit = true, CancellationToken cancellationToken = default);
   Task CommitAsync(CancellationToken cancellationToken = default);
   Task UpdateAsync(Expression<Func<ScheduledTask, bool>> filter, Expression<Func<SetPropertyCalls<ScheduledTask>, SetPropertyCalls<ScheduledTask>>> updateExpression,  bool autoCommit = true, CancellationToken cancellationToken = default);
+  Task DeleteAsync(Expression<Func<ScheduledTask, bool>> filter, bool autoCommit = true, CancellationToken cancellationToken = default);
 }

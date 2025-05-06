@@ -16,9 +16,7 @@ public partial class GenSchedulerTriggerBuilder: IDailyTriggerBuilder {
 
   /// <inheritdoc/>
   ICommonTriggerStep IDailyTriggerBuilder.SetTimeOfDay(TimeOnly time) {
-    if(_current is DailyTrigger dt)
-      dt.TimeOfDay = time;
-
+    _current!.InternalSetTimeOfDay(time);
     return this;
   }
 }

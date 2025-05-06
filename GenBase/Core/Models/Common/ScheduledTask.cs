@@ -16,6 +16,11 @@ public class ScheduledTask: BaseModel {
   public DateTimeOffset NextExecution { get; set; }
 
   /// <summary>
+  /// The last execution time of the task 
+  /// </summary>
+  public DateTimeOffset LastExecution { get; set; } = DateTimeOffset.MinValue;
+
+  /// <summary>
   /// Task state (e.g., running, waiting, ready)
   /// </summary>
   public string ExecutionStatus { get; set; } = GenSchedulerTaskStatus.Ready.ToString();
@@ -28,6 +33,13 @@ public class ScheduledTask: BaseModel {
 
   /// <summary> Arbitrary serialized arguments to be passed to the job handler </summary>
   public byte[] BlobArgs { get; set; } = [];
+
+  /// <summary>
+  /// Maximum time a task can remain running. 
+  /// After reaching the limit, all tasks linked to it will automatically be interrupted (timeout).
+  /// If this value is <see cref="TimeSpan.Zero"/> has no limit.
+  /// </summary>
+  public TimeSpan MaxExecutionTime { get; set; } = TimeSpan.Zero;
 
   /// <summary> Triggers associated with this task </summary>
   public ICollection<BaseTrigger> Triggers { get; set; } = [];

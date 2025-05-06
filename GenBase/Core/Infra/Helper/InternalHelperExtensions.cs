@@ -1,5 +1,6 @@
 ﻿using GenTaskScheduler.Core.Enums;
 using GenTaskScheduler.Core.Models.Triggers;
+using Microsoft.VisualBasic;
 
 namespace GenTaskScheduler.Core.Infra.Helper;
 internal static class InternalHelperExtensions {
@@ -61,7 +62,7 @@ internal static class InternalHelperExtensions {
   /// <param name="startsAt">Mandatory value for the start of validity</param>
   /// <returns>Current instance of Trigger</returns>
   /// <exception cref="ArgumentNullException"></exception>
-  internal static T InternalSetStartDate<T>(this T current, DateTimeOffset startsAt) where T: BaseTrigger {
+  internal static T InternalSetStartDate<T>(this T current, DateTimeOffset startsAt) where T : BaseTrigger {
     if(startsAt < DateTimeOffset.UtcNow)
       throw new ArgumentException("Start date cannot be in the past.", nameof(startsAt));
 
@@ -144,9 +145,17 @@ internal static class InternalHelperExtensions {
   /// <param name="time">Time of day for execution</param>
   /// <returns>Current instance of Trigger </returns>
   internal static T InternalSetTimeOfDay<T>(this T current, TimeOnly time) where T : BaseTrigger {
-    if(current is MonthlyTrigger mt)
-      mt.TimeOfDay = time;
+    var validTypes = new[] { typeof(DailyTrigger), typeof(WeeklyTrigger), typeof(MonthlyTrigger) };
+    if(!validTypes.Contains(current.GetType()))
+      throw new InvalidOperationException($"Invalid trigger type '{current.GetType().Name}'. Expected DailyTrigger, WeeklyTrigger or MonthlyTrigger");
 
+    var today = DateTime.UtcNow.Date; // Data atual, sem a parte da hora
+    var localDateTime = new DateTime(today.Year, today.Month, today.Day, time.Hour, time.Minute, time.Second, DateTimeKind.Unspecified);
+
+    var offset = TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow);
+    var utcDateTime = localDateTime - offset;
+    var finalUtc = new DateTimeOffset(utcDateTime, TimeSpan.Zero);
+    current.TimeOfDay = new TimeOnly(finalUtc.Hour, finalUtc.Minute, finalUtc.Second);
     return current;
   }
 }

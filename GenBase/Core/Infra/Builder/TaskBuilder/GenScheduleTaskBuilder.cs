@@ -5,7 +5,6 @@ using GenTaskScheduler.Core.Enums;
 using GenTaskScheduler.Core.Infra.Builder.TriggerBuilder;
 using GenTaskScheduler.Core.Infra.Helper;
 using GenTaskScheduler.Core.Models.Common;
-using GenTaskScheduler.Core.Models.Triggers;
 
 namespace GenTaskScheduler.Core.Infra.Builder.TaskBuilder;
 
@@ -119,6 +118,16 @@ public class GenScheduleTaskBuilder:
   public IScheduledTaskBuilderDependsOn ConfigureTriggers(Action<ITriggerBuilderStart> configure) {
     ArgumentNullException.ThrowIfNull(configure);
     configure(GenSchedulerTriggerBuilder.Start(_task));
+    return this;
+  }
+
+  /// <inheritdoc />
+  /// <exception cref="ArgumentException"></exception>
+  public IScheduledTaskBuilderOptions SetTimeout(TimeSpan timeout) {
+    if(timeout == TimeSpan.Zero)
+      throw new ArgumentException("Timeout cannot be zero", nameof(timeout));
+
+    _task.MaxExecutionTime = timeout;
     return this;
   }
 }

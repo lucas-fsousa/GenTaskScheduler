@@ -1,4 +1,5 @@
-﻿using GenTaskScheduler.Core.Models.Common;
+﻿using GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger.SharedSteps;
+using GenTaskScheduler.Core.Models.Common;
 
 namespace GenTaskScheduler.Core.Abstractions.Builders.SchedulerTask;
 
@@ -20,6 +21,13 @@ public interface IScheduledTaskBuilderOptions {
   /// <param name="value">Flag value to de set</param>
   /// <returns><see cref="IScheduledTaskBuilderOptions"/></returns>
   IScheduledTaskBuilderOptions SetIsActive(bool value);
+
+  /// <summary>
+  /// Determines whether the task will have a maximum execution period.
+  /// </summary>
+  /// <param name="timeout">Maximum time a task can remain running. This value cannot be <see cref="TimeSpan.Zero"/></param>
+  /// <returns><see cref="IScheduledTaskBuilderOptions"/></returns>
+  IScheduledTaskBuilderOptions SetTimeout(TimeSpan timeout);
 
   /// <summary>
   /// Finalize the task configuration and return the built ScheduledTask.

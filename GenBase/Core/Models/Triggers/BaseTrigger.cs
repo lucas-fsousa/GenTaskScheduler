@@ -1,6 +1,7 @@
 ﻿using GenTaskScheduler.Core.Enums;
 using GenTaskScheduler.Core.Infra.Configurations;
 using GenTaskScheduler.Core.Models.Common;
+using System;
 
 namespace GenTaskScheduler.Core.Models.Triggers;
 
@@ -112,7 +113,7 @@ public abstract class BaseTrigger : BaseModel {
   /// </summary>
   /// <returns>True if the trigger missed execution within tolerance; otherwise, false.</returns>
   public virtual bool IsMissedTrigger() {
-    if(!IsValid || MaxExecutions is int max && Executions >= max)
+    if(!IsValid || (MaxExecutions is int max && Executions >= max))
       return false;
 
     var expected = GetNextExecution();
@@ -121,8 +122,11 @@ public abstract class BaseTrigger : BaseModel {
 
     var now = DateTimeOffset.UtcNow;
     var tolerance = GenSchedulerEnvironment.SchedulerConfiguration.LateExecutionTolerance;
+    var deadline = expected.Value + tolerance;
 
-    return now > expected.Value + tolerance;
+    return now > deadline && Task.LastExecution < expected.Value;
   }
+
+
 
 }

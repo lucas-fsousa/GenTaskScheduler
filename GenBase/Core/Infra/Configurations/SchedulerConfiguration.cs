@@ -12,6 +12,12 @@ public class SchedulerConfiguration {
   private TimeSpan _lateExecutionTolerance = TimeSpan.FromMinutes(1);
 
   /// <summary>
+  /// Indicates whether the scheduler should automatically delete tasks that are marked as inactive.
+  /// By default, the flag value is "false", but "true" is recommended to maintain a clean and consequently faster database.
+  /// </summary>
+  public bool AutoDeleteInactiveTasks { get; set; } = false;
+
+  /// <summary>
   /// Determines whether the scheduler should attempt to re-execute the task in case of failure. The default value is false.
   /// </summary>
   public bool RetryOnFailure { get; set; } = false;
