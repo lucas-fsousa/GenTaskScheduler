@@ -34,6 +34,10 @@ internal class GenSchedulerLauncher(IServiceProvider serviceProvider, ILogger<Ap
           try {
             await _semaphore.WaitAsync(cancellationToken);
             using(logger.BeginScope("ID={id}", taskInfo.Task.UpdatedAt.Ticks.ToString("x2"))) {
+              var delay = DateTimeOffset.UtcNow - taskInfo.Task.NextExecution;
+              if(delay > GenSchedulerEnvironment.SchedulerConfiguration.LateExecutionTolerance)
+                logger.LogWarning("Task executing with delay of {delay}", delay);
+              
               logger.LogInformation("Execution started");
               await ExecuteTaskScopedAsync(taskInfo, cancellationToken);
               logger.LogInformation("Execution completed");

@@ -22,5 +22,10 @@ public partial class GenSchedulerTriggerBuilder: IOnceTriggerBuilder {
     _current!.MaxExecutions = 1;
     return this;
   }
+
+  ///<inheritdoc />
+  ///<exception cref="InvalidOperationException"></exception>
+  [Obsolete("This method is obsolete, use SetExecutionDateTime with DateTimeOffset instead.")]
+  public ICommonTriggerStep SetExecutionDateTime(DateTime executionTime) => throw new InvalidOperationException("this method is obsolete, use SetExecutionDateTime with DateTimeOffset instead");
 }
 

@@ -12,7 +12,7 @@ public interface IMonthOfYearTriggerStep {
   /// Sets the months of the year for the trigger.
   /// </summary>
   /// <param name="monthOfYears">An array of <see cref="MonthOfYear"/> containing the months of the year to be considered by the trigger</param>
-  /// <returns><see cref="ICommonTriggerStep"/></returns>
-  ICommonTriggerStep SetMonthsOfYear(params MonthOfYear[] monthOfYears);
+  /// <returns><see cref="ITimerOfDayTriggerStep"/></returns>
+  ITimerOfDayTriggerStep SetMonthsOfYear(params MonthOfYear[] monthOfYears);
 }
 

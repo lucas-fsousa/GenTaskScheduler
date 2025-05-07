@@ -104,12 +104,16 @@ internal static class InternalHelperExtensions {
   /// <returns>Current instance of Trigger</returns>
   /// <exception cref="ArgumentNullException"></exception>
   /// <exception cref="InvalidOperationException"></exception>
+  /// <exception cref="ArgumentOutOfRangeException"></exception>
   internal static T InternalSetDaysOfMonth<T>(this T current, params int[] daysOfMonth) where T : BaseTrigger {
     if(daysOfMonth is null || daysOfMonth.Length == 0)
       throw new ArgumentNullException(nameof(daysOfMonth), "Days of month cannot be null or empty.");
 
+    if(daysOfMonth.Any(d => d < 0 || d > 31))
+      throw new ArgumentOutOfRangeException(nameof(daysOfMonth), "Days of month must be between 1 and 31. Use 0 to indicate the last day of the month. If you need something more specific, consider using a CalendarTrigger");
+
     if(current is MonthlyTrigger mt)
-      mt.DaysOfMonth = string.Join(',', daysOfMonth);
+      mt.DaysOfMonth = string.Join(',', daysOfMonth.Distinct().Order());
     else
       throw new InvalidOperationException($"Invalid trigger type '{current.GetType().Name}'. Expected MonthlyTrigger.");
 
