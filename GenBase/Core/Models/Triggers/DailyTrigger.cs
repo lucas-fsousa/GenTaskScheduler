@@ -39,9 +39,10 @@ public class DailyTrigger: BaseTrigger {
 
   /// <inheritdoc />
   public override void UpdateTriggerState() {
+    var now = DateTimeOffset.UtcNow;
     Executions++;
-    UpdatedAt = DateTimeOffset.UtcNow;
-    LastExecution = DateTimeOffset.UtcNow;
+    UpdatedAt = now;
+    LastExecution = now;
     NextExecution = GetNextExecution();
 
     if(NextExecution is null) {

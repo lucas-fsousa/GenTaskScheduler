@@ -10,10 +10,10 @@ public class WeeklyTrigger: BaseTrigger {
 
   /// <inheritdoc />
   public override DateTimeOffset? GetNextExecution() {
+    var now = DateTimeOffset.UtcNow;
     if(!IsValid || string.IsNullOrWhiteSpace(DaysOfWeek))
       return null;
 
-    var now = DateTimeOffset.UtcNow;
     if(EndsAt.HasValue && now > EndsAt.Value)
       return null;
 

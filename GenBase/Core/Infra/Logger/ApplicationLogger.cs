@@ -10,6 +10,7 @@ namespace GenTaskScheduler.Core.Infra.Logger;
 /// <param name="categoryName">The category name for logger</param>
 public class ApplicationLogger(string categoryName): ILogger {
   private static readonly SchedulerConfiguration _config = GenSchedulerEnvironment.SchedulerConfiguration;
+  private static readonly object _consoleLock = new();
 
   /// <inheritdoc/>
   public IDisposable? BeginScope<TState>(TState state) where TState : notnull => new SchedulerLogScope(state);
@@ -22,32 +23,35 @@ public class ApplicationLogger(string categoryName): ILogger {
     if(!IsEnabled(logLevel))
       return;
 
-    var originalColor = Console.ForegroundColor;
-    var scopePrefix = GetScopeInfo();
-    scopePrefix = string.IsNullOrEmpty(scopePrefix) ? "" : $"<{scopePrefix}>";
+    lock(_consoleLock) {
+      var originalColor = Console.ForegroundColor;
+      var scopePrefix = GetScopeInfo();
+      scopePrefix = string.IsNullOrEmpty(scopePrefix) ? "" : $"<{scopePrefix}>";
 
-    Console.Write('[');
-    Console.ForegroundColor = GetColor(logLevel);
-    Console.Write(logLevel.ToString().ToUpper());
-    Console.ForegroundColor = originalColor;
-    Console.Write($" {DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm:ss}]: {categoryName}{scopePrefix}\n  {formatter(state, exception)}");
-    Console.WriteLine(exception is null? "" : $"\n    {FormatException(exception)}");
+      Console.Write('[');
+      Console.ForegroundColor = GetColor(logLevel);
+      Console.Write(logLevel.ToString().ToUpper());
+      Console.ForegroundColor = originalColor;
+      Console.Write($" {DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm:ss}]: {categoryName}{scopePrefix}\n  {formatter(state, exception)}");
+      Console.WriteLine(exception is null ? "" : $"\n    {FormatException(exception)}");
+      Console.WriteLine(new string('-', Console.WindowWidth));
+    }
   }
 
   private static ConsoleColor GetColor(LogLevel level) => level switch {
-    LogLevel.Critical => ConsoleColor.DarkRed,
-    LogLevel.Error => ConsoleColor.Red,
-    LogLevel.Warning => ConsoleColor.Yellow,
-    LogLevel.Information => ConsoleColor.DarkGreen,
     LogLevel.Debug => ConsoleColor.Gray,
+    LogLevel.Error => ConsoleColor.Red,
     LogLevel.Trace => ConsoleColor.DarkGray,
+    LogLevel.Warning => ConsoleColor.Yellow,
+    LogLevel.Critical => ConsoleColor.DarkRed,
+    LogLevel.Information => ConsoleColor.DarkGreen,
     _ => ConsoleColor.White,
   };
 
   private static string FormatException(Exception? exception) {
     if(exception is null)
       return string.Empty;
-    
+
     var result = new StringBuilder();
     var level = 0;
     while(exception != null) {

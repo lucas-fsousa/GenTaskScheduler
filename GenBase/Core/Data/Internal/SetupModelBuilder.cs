@@ -22,7 +22,7 @@ internal static class SetupModelBuilder {
       entity.Property(e => e.TriggerDescription).HasMaxLength(100);
       entity.Property(e => e.LastTriggeredStatus).HasMaxLength(20);
     });
-      
+
     modelBuilder.SetupCronTrigger();
     modelBuilder.SetupOnceTrigger();
     modelBuilder.SetupDailyTrigger();
@@ -48,20 +48,6 @@ internal static class SetupModelBuilder {
     return builder;
   }
 
-  internal static ModelBuilder SetupCalendarTrigger(this ModelBuilder builder) {
-    builder.Entity<CalendarTrigger>(entity => {
-      entity.Property(e => e.Id).ValueGeneratedNever();
-    });
-
-    builder.Entity<CalendarEntry>(entity => {
-      entity.Property(e => e.Id).ValueGeneratedNever();
-      entity.Property(e => e.ScheduledDateTime).IsRequired();
-    });
-
-    return builder;
-  }
-
-
   internal static ModelBuilder SetupScheduledTask(this ModelBuilder builder) {
     builder.Entity<ScheduledTask>(entity => {
       entity.Property(e => e.Id).ValueGeneratedNever();
@@ -77,14 +63,32 @@ internal static class SetupModelBuilder {
         .HasForeignKey(e => e.DependsOnTaskId)
         .OnDelete(DeleteBehavior.Restrict);
 
+      entity.HasOne(e => e.LastExecutionHistory)
+        .WithMany()
+        .HasForeignKey(e => e.LastExecutionHistoryId)
+        .OnDelete(DeleteBehavior.Restrict);
+
       entity.Navigation(e => e.Triggers).AutoInclude();
-      entity.Navigation(e => e.ExecutionHistory).AutoInclude();
       entity.Navigation(e => e.DependsOnTask).AutoInclude(false);
     });
 
     return builder;
   }
 
+  internal static ModelBuilder SetupCalendarTrigger(this ModelBuilder builder) {
+    builder.Entity<CalendarTrigger>(entity => {
+      entity.Property(e => e.Id).ValueGeneratedNever();
+      entity.Navigation(e => e.CalendarEntries).AutoInclude(true);
+    });
+
+    builder.Entity<CalendarEntry>(entity => {
+      entity.Property(e => e.Id).ValueGeneratedNever();
+      entity.Property(e => e.ScheduledDateTime).IsRequired();
+    });
+
+
+    return builder;
+  }
 
   internal static ModelBuilder SetupCronTrigger(this ModelBuilder builder) {
     builder.Entity<CronTrigger>(entity => {

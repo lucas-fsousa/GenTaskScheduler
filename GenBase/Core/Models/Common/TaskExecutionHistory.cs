@@ -34,9 +34,6 @@ public class TaskExecutionHistory {
   /// <summary>Optional error message (for failures)</summary>
   public string? ErrorMessage { get; set; }
 
-  /// <summary>Optional serialized result data (e.g., output)</summary>
-  public byte[]? ResultBlob { get; set; }
-
   /// <summary>
   /// Optional deserialized result data (e.g., output)
   /// </summary>

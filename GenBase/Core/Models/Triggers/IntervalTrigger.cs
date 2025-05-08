@@ -6,10 +6,9 @@ public class IntervalTrigger: BaseTrigger {
 
   /// <inheritdoc />
   public override DateTimeOffset? GetNextExecution() {
+    var now = DateTimeOffset.UtcNow;
     if(!IsValid || ExecutionInterval is null || ExecutionInterval.Value.TotalMinutes <= 0)
       return null;
-
-    var now = DateTimeOffset.UtcNow;
 
     if(now < StartsAt)
       return StartsAt;

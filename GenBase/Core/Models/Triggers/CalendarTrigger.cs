@@ -15,11 +15,7 @@ public class CalendarTrigger: BaseTrigger {
   /// <inheritdoc />
   public override DateTimeOffset? GetNextExecution() {
     var now = DateTimeOffset.UtcNow;
-
-    return CalendarEntries
-      .Where(entry => !entry.Executed && entry.ScheduledDateTime > now)
-      .OrderBy(entry => entry.ScheduledDateTime)
-      .FirstOrDefault()?.ScheduledDateTime;
+    return CalendarEntries.FirstOrDefault(entry => !entry.Executed && entry.ScheduledDateTime > now)?.ScheduledDateTime;
   }
 
   /// <inheritdoc />
@@ -33,40 +29,43 @@ public class CalendarTrigger: BaseTrigger {
 
   /// <inheritdoc />
   public override void UpdateTriggerState() {
+    var now = DateTimeOffset.UtcNow;
     Executions++;
-    UpdatedAt = DateTimeOffset.UtcNow;
-    LastExecution = DateTimeOffset.UtcNow;
+    UpdatedAt = now;
+    LastExecution = now;
     NextExecution = GetNextExecution();
 
-    if(NextExecution is null) {
-      IsValid = false;
-      return;
-    }
-
-    if(NextExecution == default || (MaxExecutions.HasValue && Executions >= MaxExecutions)) {
+    if(NextExecution is null || (MaxExecutions.HasValue && Executions >= MaxExecutions)) {
       IsValid = false;
       NextExecution = null;
       return;
     }
 
-    var entry = CalendarEntries.LastOrDefault(CalendarEntries => CalendarEntries.ScheduledDateTime < NextExecution);
-    if(entry is not null)
-      CalendarEntries.First(x => x.Id == entry.Id).Executed = true;
+    var justExecuted = CalendarEntries
+      .Where(e => !e.Executed && e.ScheduledDateTime <= LastExecution)
+      .OrderByDescending(e => e.ScheduledDateTime)
+      .FirstOrDefault();
+
+    if(justExecuted is not null)
+      justExecuted.Executed = true;
   }
 
   /// <inheritdoc />
   public override bool IsMissedTrigger() {
+    var now = DateTimeOffset.UtcNow;
     if(!IsValid || MaxExecutions is int max && Executions >= max)
       return false;
 
-    var next = CalendarEntries.OrderBy(e => e.ScheduledDateTime).FirstOrDefault(e => e.ScheduledDateTime > LastExecution);
+    var next = CalendarEntries
+      .Where(e => !e.Executed && e.ScheduledDateTime > LastExecution)
+      .OrderBy(e => e.ScheduledDateTime)
+      .FirstOrDefault();
+
     if(next == null)
       return false;
 
-    var now = DateTimeOffset.UtcNow;
     var expected = next.ScheduledDateTime;
     var tolerance = GenSchedulerEnvironment.SchedulerConfiguration.LateExecutionTolerance;
-
     return now > expected && now <= expected + tolerance;
   }
 

@@ -19,10 +19,7 @@ public class TaskHistoryRepository(GenTaskSchedulerDbContext context, ILogger<Ap
         .OrderByDescending(h => h.EndedAt)
         .ToListAsync(cancellationToken);
 
-      return tasks.Select(t => {
-        t.ResultObject = TaskSerializer.DeserializeBytesToObject(t.ResultBlob);
-        return t;
-      });
+      return tasks;
     } catch(Exception ex) {
       logger.LogError(ex, "Error retrieving task history for task ID {TaskId}", taskId);
       return [];
@@ -33,9 +30,6 @@ public class TaskHistoryRepository(GenTaskSchedulerDbContext context, ILogger<Ap
   public async Task<TaskExecutionHistory?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) {
     try {
       var task = await context.TaskExecutionsHistory.FindAsync([id], cancellationToken);
-      if(task is not null)
-        task.ResultObject = TaskSerializer.DeserializeBytesToObject(task.ResultBlob);
-
       return task;
     } catch(Exception ex) {
       logger.LogError(ex, "Error retrieving task history for ID {Id}", id);

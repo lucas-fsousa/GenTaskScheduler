@@ -9,24 +9,26 @@ public class CronTrigger: BaseTrigger {
 
   ///<inheritdoc />
   public override DateTimeOffset? GetNextExecution() {
+    var now = DateTimeOffset.UtcNow;
     if(string.IsNullOrWhiteSpace(CronExpression))
       return null;
 
     if(!Cronos.CronExpression.TryParse(CronExpression, out CronExpression cron))
       return null;
 
-    return cron.GetNextOccurrence(DateTimeOffset.UtcNow, TimeZoneInfo.Utc);
+    return cron.GetNextOccurrence(now, TimeZoneInfo.Utc);
   }
 
   ///<inheritdoc />
   public override bool IsEligibleToRun() {
+    var now = DateTimeOffset.UtcNow;
     if(string.IsNullOrWhiteSpace(CronExpression))
       return false;
 
     if(!Cronos.CronExpression.TryParse(CronExpression, out CronExpression cron))
       return false;
 
-    var lastOccurrence = cron.GetNextOccurrence(DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1), TimeZoneInfo.Utc);
+    var lastOccurrence = cron.GetNextOccurrence(now - TimeSpan.FromMinutes(1), TimeZoneInfo.Utc);
     if(!lastOccurrence.HasValue)
       return false;
 
@@ -35,9 +37,10 @@ public class CronTrigger: BaseTrigger {
 
   /// <inheritdoc />
   public override void UpdateTriggerState() {
+    var now = DateTimeOffset.UtcNow;
     Executions++;
-    UpdatedAt = DateTimeOffset.UtcNow;
-    LastExecution = DateTimeOffset.UtcNow;
+    UpdatedAt = now;
+    LastExecution = now;
     NextExecution = GetNextExecution();
 
     if(MaxExecutions.HasValue && Executions >= MaxExecutions)

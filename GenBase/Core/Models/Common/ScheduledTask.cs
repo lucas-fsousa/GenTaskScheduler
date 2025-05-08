@@ -1,5 +1,6 @@
 ﻿using GenTaskScheduler.Core.Enums;
 using GenTaskScheduler.Core.Models.Triggers;
+using System.Text;
 
 namespace GenTaskScheduler.Core.Models.Common;
 
@@ -44,6 +45,17 @@ public class ScheduledTask: BaseModel {
   /// <summary> Triggers associated with this task </summary>
   public ICollection<BaseTrigger> Triggers { get; set; } = [];
 
+  /// <summary>
+  /// Last execution history id reference
+  /// </summary>
+  public Guid? LastExecutionHistoryId { get; set; }
+
+  /// <summary>
+  /// Last execution history
+  /// </summary>
+  public TaskExecutionHistory? LastExecutionHistory { get; set; }
+
+
   /// <summary>Execution logs associated with this task</summary>
   public ICollection<TaskExecutionHistory> ExecutionHistory { get; set; } = [];
 
@@ -73,7 +85,33 @@ public class ScheduledTask: BaseModel {
     if(DependsOnTask is null)
       return true;
 
-    return DependsOnTask.ExecutionHistory.Count > 0 && DependsOnStatus.Split(',').Contains(DependsOnTask.ExecutionHistory.Last().Status);
+    return DependsOnTask.LastExecutionHistory is not null && DependsOnStatus.Split(',').Contains(DependsOnTask.LastExecutionHistory.Status);
   }
+
+  public override bool Equals(object? obj) {
+    if(obj == null)
+      return false;
+
+    if(obj is ScheduledTask)
+      return obj.GetHashCode() == GetHashCode();
+
+    return false;
+  }
+
+  public override int GetHashCode() => new StringBuilder()
+    .Append(Name)
+    .Append(ExecutionStatus)
+    .Append(AutoDelete)
+    .Append(IsActive)
+    .Append(LastExecution)
+    .Append(NextExecution)
+    .Append(MaxExecutionTime)
+    .Append(BlobArgs.Length)
+    .Append(DependsOnTaskId)
+    .Append(DependsOnStatus)
+    .Append(DependsOnTask)
+    .Append(LastExecutionHistoryId)
+    .ToString()
+    .GetHashCode();
 }
 

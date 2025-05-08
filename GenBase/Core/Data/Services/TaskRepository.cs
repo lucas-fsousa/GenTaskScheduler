@@ -14,6 +14,7 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
   ///<inheritdoc/>
   public async Task AddAsync(ScheduledTask task, bool autoCommit = true, CancellationToken cancellationToken = default) {
     try {
+      var now = DateTimeOffset.UtcNow;
       if(task is null)
         throw new ArgumentNullException(nameof(task), "Task cannot be null");
 
@@ -24,12 +25,11 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
       if(existe)
         throw new ArgumentException($"Task with name [{task.Name}] already exists", nameof(task));
 
-
       if(task.DependsOnTask is not null)
         await AddAsync(task.DependsOnTask, false, cancellationToken);
 
-      task.UpdatedAt = DateTimeOffset.UtcNow;
-      task.CreatedAt = DateTimeOffset.UtcNow;
+      task.UpdatedAt = now;
+      task.CreatedAt = now;
       task.ExecutionStatus = Enums.GenSchedulerTaskStatus.Ready.ToString();
       task.DependsOnTaskId = task.DependsOnTask?.Id ?? task.DependsOnTaskId;
       task.DependsOnTask = null;
@@ -73,11 +73,30 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
   ///<inheritdoc/>
   public async Task<List<ScheduledTask>> GetAllAsync(Expression<Func<ScheduledTask, bool>>? filter = null, CancellationToken cancellationToken = default) {
     try {
-      var tasks = new List<ScheduledTask>();
+      var tasksQuery = context.ScheduledTasks.AsQueryable();
+
       if(filter is not null)
-        tasks = await context.ScheduledTasks.Where(filter).ToListAsync(cancellationToken) ?? [];
-      else
-        tasks = await context.ScheduledTasks.ToListAsync(cancellationToken) ?? [];
+        tasksQuery = tasksQuery.Where(filter);
+
+      var tasks = await tasksQuery.Select(task => new ScheduledTask {
+        Id = task.Id,
+        Name = task.Name,
+        NextExecution = task.NextExecution,
+        LastExecution = task.LastExecution,
+        ExecutionStatus = task.ExecutionStatus,
+        AutoDelete = task.AutoDelete,
+        IsActive = task.IsActive,
+        BlobArgs = task.BlobArgs,
+        MaxExecutionTime = task.MaxExecutionTime,
+        Triggers = task.Triggers,
+        DependsOnStatus = task.DependsOnStatus,
+        DependsOnTaskId = task.DependsOnTaskId,
+        DependsOnTask = task.DependsOnTask,
+        LastExecutionHistoryId = task.LastExecutionHistoryId,
+        CreatedAt = task.CreatedAt,
+        UpdatedAt = task.UpdatedAt,
+        LastExecutionHistory = task.ExecutionHistory.FirstOrDefault(h => h.Id == task.LastExecutionHistoryId)
+      }).ToListAsync(cancellationToken);
 
       foreach(var task in tasks) {
         if(task.DependsOnTask is null)
@@ -86,6 +105,7 @@ public class TaskRepository(GenTaskSchedulerDbContext context, ILogger<Applicati
         foreach(var reference in context.Entry(task).References)
           await reference.LoadAsync(cancellationToken);
       }
+
       return tasks;
     } catch(Exception ex) {
       logger.LogError(ex, "Error on getting all tasks");
