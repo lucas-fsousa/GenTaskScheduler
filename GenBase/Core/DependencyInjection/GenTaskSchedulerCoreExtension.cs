@@ -4,6 +4,7 @@ using GenTaskScheduler.Core.Data.Services;
 using GenTaskScheduler.Core.Infra;
 using GenTaskScheduler.Core.Infra.Configurations;
 using GenTaskScheduler.Core.Infra.Logger;
+using GenTaskScheduler.Core.Scheduler;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
