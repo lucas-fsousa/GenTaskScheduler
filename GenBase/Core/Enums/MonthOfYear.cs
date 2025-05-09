@@ -1,4 +1,8 @@
 ﻿namespace GenTaskScheduler.Core.Enums;
+
+/// <summary>
+/// Enumeration representing the months of the year.
+/// </summary>
 public enum MonthOfYear {
   January = 1,
   February = 2,

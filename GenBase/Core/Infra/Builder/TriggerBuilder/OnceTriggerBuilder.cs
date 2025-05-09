@@ -1,14 +1,31 @@
 ﻿using GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger;
+using GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger.SharedSteps;
+using GenTaskScheduler.Core.Infra.Helper;
+using GenTaskScheduler.Core.Models.Triggers;
 
 namespace GenTaskScheduler.Core.Infra.Builder.TriggerBuilder;
-public partial class TriggerBuilder: IOnceTriggerBuilder {
-  public IOnceTriggerBuilder SetExecutionTime(DateTimeOffset executionTime) {
+public partial class GenSchedulerTriggerBuilder: IOnceTriggerBuilder {
+
+  ///<inheritdoc />
+  public IOnceTriggerBuilder CreateOnceTrigger() {
+    _current = new OnceTrigger();
+    return this;
+  }
+
+  ///<inheritdoc />
+  ///<exception cref="ArgumentOutOfRangeException"></exception>
+  public ICommonTriggerStep SetExecutionDateTime(DateTimeOffset executionTime) {
     if(executionTime < DateTimeOffset.UtcNow)
       throw new ArgumentOutOfRangeException(nameof(executionTime), "Execution time cannot be in the past.");
 
+    _current!.InternalSetStartDate(executionTime);
     _current!.MaxExecutions = 1;
-    _current!.StartsAt = executionTime;
     return this;
   }
+
+  ///<inheritdoc />
+  ///<exception cref="InvalidOperationException"></exception>
+  [Obsolete("This method is obsolete, use SetExecutionDateTime with DateTimeOffset instead.")]
+  public ICommonTriggerStep SetExecutionDateTime(DateTime executionTime) => throw new InvalidOperationException("this method is obsolete, use SetExecutionDateTime with DateTimeOffset instead");
 }
 

@@ -1,5 +1,4 @@
 ﻿using GenTaskScheduler.Core.Abstractions.Builders.SchedulerTrigger;
-using GenTaskScheduler.Core.Models.Triggers;
 
 namespace GenTaskScheduler.Core.Abstractions.Builders.SchedulerTask;
 
@@ -11,6 +10,6 @@ public interface IScheduledTaskBuilderTriggers {
   /// Starts configuration of triggers for the scheduled task.
   /// </summary>
   /// <param name="configure">Delegate to configure one or more triggers using the builder.</param>
-  /// <returns>IScheduledTaskBuilderDependsOn</returns>
+  /// <returns><see cref="IScheduledTaskBuilderDependsOn"/></returns>
   IScheduledTaskBuilderDependsOn ConfigureTriggers(Action<ITriggerBuilderStart> configure);
 }

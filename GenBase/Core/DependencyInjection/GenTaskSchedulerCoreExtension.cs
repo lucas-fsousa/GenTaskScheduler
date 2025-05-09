@@ -2,7 +2,9 @@
 using GenTaskScheduler.Core.Abstractions.Repository;
 using GenTaskScheduler.Core.Data.Services;
 using GenTaskScheduler.Core.Infra;
-using GenTaskScheduler.Core.Infra.Log;
+using GenTaskScheduler.Core.Infra.Configurations;
+using GenTaskScheduler.Core.Infra.Logger;
+using GenTaskScheduler.Core.Scheduler;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -12,18 +14,20 @@ public static class GenTaskSchedulerCoreExtension {
     if(token is null)
       throw new InvalidOperationException("Use a database-specific registration method to add the scheduler.");
 
-    var config = services.BuildServiceProvider().CreateScope().ServiceProvider.GetRequiredService<SchedulerConfiguration>();
     services.AddLogging(logging => {
       logging.ClearProviders();
-      logging.AddProvider(new SchedulerLoggerProvider(config));
+      logging.AddProvider(new SchedulerLoggerProvider());
       logging.SetMinimumLevel(LogLevel.Information);
     });
 
-    services.AddScoped<ITaskRepository, TaskRepository>();
-    services.AddScoped<ITriggerRepository, TriggerRepository>();
-    services.AddScoped<ITaskHistoryRepository, TaskHistoryRepository>();
-    services.AddSingleton<ISchedulerLauncher, SchedulerLauncher>();
-    services.AddHostedService<GenTaskSchedulerHostedService>();
+    if(!GenSchedulerEnvironment.IsDesignTime) {
+      services.AddScoped<ITaskRepository, TaskRepository>();
+      services.AddScoped<ITriggerRepository, TriggerRepository>();
+      services.AddScoped<ITaskHistoryRepository, TaskHistoryRepository>();
+      services.AddSingleton<ISchedulerLauncher, GenSchedulerLauncher>();
+      services.AddHostedService<GenTaskSchedulerHostedService>();
+    }
+
     return services;
   }
 }

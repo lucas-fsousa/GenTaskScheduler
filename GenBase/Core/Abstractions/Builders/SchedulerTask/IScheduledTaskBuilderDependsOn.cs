@@ -12,20 +12,20 @@ public interface IScheduledTaskBuilderDependsOn {
   /// Set the task that this task depends on.
   /// </summary>
   /// <param name="taskId">Id of parent task. This value cannot be empty or null</param>
-  /// <returns>IScheduledTaskBuilderDependsOnWithStatus</returns>
+  /// <returns><see cref="IScheduledTaskBuilderDependsOnWithStatus"/></returns>
   IScheduledTaskBuilderDependsOnWithStatus DependsOn(Guid taskId);
 
   /// <summary>
   /// Set the task that this task depends on.
   /// </summary>
   /// <param name="task">Parent task. This value cannot be null</param>
-  /// <returns>IScheduledTaskBuilderDependsOnWithStatus</returns>
+  /// <returns><see cref="IScheduledTaskBuilderDependsOnWithStatus"/></returns>
   IScheduledTaskBuilderDependsOnWithStatus DependsOn(ScheduledTask task);
 
   /// <summary>
   /// Bypass, does not depend on another task for activation
   /// </summary>
-  /// <returns>IScheduledTaskBuilderOptions</returns>
+  /// <returns><see cref="IScheduledTaskBuilderOptions"/></returns>
   IScheduledTaskBuilderOptions NotDepends();
 }
 
@@ -37,8 +37,16 @@ public interface IScheduledTaskBuilderDependsOnWithStatus {
   /// <summary>
   /// Set the status of the task that this task depends on.
   /// </summary>
-  /// <param name="status">Parent last execution status, the value cannot be None</param>
-  /// <returns>IScheduledTaskBuilderOptions</returns>
-  IScheduledTaskBuilderOptions WithStatus(ExecutionStatus status);
+  /// <param name="status">Status indicated in the history of the parent task referring to the last execution. 
+  /// If the value is set to <see cref="GenTaskHistoryStatus.None"/>, any status will be valid.</param>
+  /// <returns><see cref="IScheduledTaskBuilderOptions"/></returns>
+  IScheduledTaskBuilderOptions WithStatus(GenTaskHistoryStatus status);
+  /// <summary>
+  /// Set the status of the task that this task depends on.
+  /// </summary>
+  /// <param name="status">Status array indicated in the history of the parent task referring to the last execution.
+  /// Cannot be <see cref="GenTaskHistoryStatus.None"/> or Empty</param>
+  /// <returns><see cref="IScheduledTaskBuilderOptions"/></returns>
+  IScheduledTaskBuilderOptions WithStatus(params GenTaskHistoryStatus[] status);
 }
 

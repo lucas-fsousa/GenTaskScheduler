@@ -1,14 +1,13 @@
 ﻿using GenTaskScheduler.Core.Models.Common;
 using GenTaskScheduler.Core.Models.Triggers;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace GenTaskScheduler.Core.Data.Internal;
 
-public abstract class GenTaskSchedulerDbContext : DbContext {
+/// <inheritdoc />
+public abstract class GenTaskSchedulerDbContext: DbContext {
   protected GenTaskSchedulerDbContext(DbContextOptions options) : base(options) { }
   protected GenTaskSchedulerDbContext() { }
-
   public DbSet<ScheduledTask> ScheduledTasks { get; set; }
 
   // TPH hierarchy for triggers
@@ -22,9 +21,9 @@ public abstract class GenTaskSchedulerDbContext : DbContext {
   public DbSet<TaskExecutionHistory> TaskExecutionsHistory { get; set; }
   public DbSet<CalendarEntry> CalendarEntries { get; set; }
 
+  /// <inheritdoc/>
   protected override void OnModelCreating(ModelBuilder modelBuilder) {
     modelBuilder.SetupScheduledTask();
-
     modelBuilder.SetupTriggerMappings();
 
     base.OnModelCreating(modelBuilder);
