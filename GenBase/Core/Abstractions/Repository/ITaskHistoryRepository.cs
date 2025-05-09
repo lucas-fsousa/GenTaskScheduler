@@ -6,14 +6,14 @@ namespace GenTaskScheduler.Core.Abstractions.Repository;
 /// <summary>
 /// Interface for the Task History Repository.
 /// </summary>
-internal interface ITaskHistoryRepository : IDisposable {
+public interface ITaskHistoryRepository : IDisposable {
   /// <summary>
   /// Retrieves the execution history of a task by its ID.
   /// </summary>
   /// <param name="taskId">Id of task for seach history</param>
   /// <param name="cancellationToken">Token for async executions</param>
   /// <returns>An <see cref="IEnumerable{T}"/></returns>
-  internal Task<IEnumerable<TaskExecutionHistory>> GetHistoryByTaskIdAsync(Guid taskId, CancellationToken cancellationToken = default);
+  public Task<IEnumerable<TaskExecutionHistory>> GetHistoryByTaskIdAsync(Guid taskId, CancellationToken cancellationToken = default);
 
   /// <summary>
   /// Retrieves a specific history record by execution ID.
@@ -21,7 +21,7 @@ internal interface ITaskHistoryRepository : IDisposable {
   /// <param name="id">History ID</param>
   /// <param name="cancellationToken">Token for async executions</param>
   /// <returns><see cref="TaskExecutionHistory"/></returns>
-  internal Task<TaskExecutionHistory?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+  public Task<TaskExecutionHistory?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
   /// <summary>
   /// Adds a new task execution history record.
@@ -30,7 +30,7 @@ internal interface ITaskHistoryRepository : IDisposable {
   /// <param name="autoCommit">if true, commit automatically, otherwise you will need to call <see cref="CommitAsync(CancellationToken)"/> manually.</param>
   /// <param name="cancellationToken">Token for async executions</param>
   /// <returns></returns>
-  internal Task AddAsync(TaskExecutionHistory history, bool autoCommit = true, CancellationToken cancellationToken = default);
+  public Task AddAsync(TaskExecutionHistory history, bool autoCommit = true, CancellationToken cancellationToken = default);
 
   /// <summary>
   /// Deletes a task execution history record by its ID.
@@ -39,14 +39,14 @@ internal interface ITaskHistoryRepository : IDisposable {
   /// <param name="autoCommit">if true, commit automatically, otherwise you will need to call <see cref="CommitAsync(CancellationToken)"/> manually.</param>
   /// <param name="cancellationToken">Token for async executions</param>
   /// <returns></returns>
-  internal Task DeleteAsync(Guid id, bool autoCommit = true, CancellationToken cancellationToken = default);
+  public Task DeleteAsync(Guid id, bool autoCommit = true, CancellationToken cancellationToken = default);
 
   /// <summary>
   /// Commits the changes to the database.
   /// </summary>
   /// <param name="cancellationToken">Token for async executions</param>
   /// <returns></returns>
-  Task CommitAsync(CancellationToken cancellationToken = default);
+  public Task CommitAsync(CancellationToken cancellationToken = default);
 
-  Task DeleteAsync(Expression<Func<TaskExecutionHistory, bool>> filter, bool autoCommit = true, CancellationToken cancellationToken = default);
+  public Task DeleteAsync(Expression<Func<TaskExecutionHistory, bool>> filter, bool autoCommit = true, CancellationToken cancellationToken = default);
 }
