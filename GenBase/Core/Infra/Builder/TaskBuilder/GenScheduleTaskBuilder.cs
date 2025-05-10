@@ -5,6 +5,8 @@ using GenTaskScheduler.Core.Enums;
 using GenTaskScheduler.Core.Infra.Builder.TriggerBuilder;
 using GenTaskScheduler.Core.Infra.Helper;
 using GenTaskScheduler.Core.Models.Common;
+using GenTaskScheduler.Core.Models.Triggers;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace GenTaskScheduler.Core.Infra.Builder.TaskBuilder;
 
@@ -118,6 +120,32 @@ public class GenScheduleTaskBuilder:
   public IScheduledTaskBuilderDependsOn ConfigureTriggers(Action<ITriggerBuilderStart> configure) {
     ArgumentNullException.ThrowIfNull(configure);
     configure(GenSchedulerTriggerBuilder.Start(_task));
+    return this;
+  }
+
+  /// <inheritdoc />
+  /// <exception cref="ArgumentNullException"></exception>
+  public IScheduledTaskBuilderDependsOn AddTrigger(BaseTrigger trigger) {
+    ArgumentNullException.ThrowIfNull(trigger);
+    AddTriggers(trigger);
+    return this;
+  }
+
+  /// <inheritdoc />
+  /// <exception cref="ArgumentNullException"></exception>
+  /// <exception cref="ArgumentException"></exception>
+  public IScheduledTaskBuilderDependsOn AddTriggers(params BaseTrigger[] triggers) {
+    ArgumentNullException.ThrowIfNull(triggers);
+
+    if(triggers.Length == 0)
+      throw new ArgumentException("The array of triggers cannot be empty", nameof(triggers));
+
+    foreach(var trigger in triggers) {
+      trigger.TaskId = _task.Id;
+      trigger.Task = _task;
+      _task.Triggers.Add(trigger);
+    }
+
     return this;
   }
 

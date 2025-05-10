@@ -25,8 +25,6 @@ public class IntervalTrigger: BaseTrigger {
     return next;
   }
 
-
-
   /// <inheritdoc />
   public override bool IsEligibleToRun() {
     if(!IsValid)

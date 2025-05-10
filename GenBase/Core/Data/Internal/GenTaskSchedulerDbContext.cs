@@ -25,7 +25,6 @@ public abstract class GenTaskSchedulerDbContext: DbContext {
   protected override void OnModelCreating(ModelBuilder modelBuilder) {
     modelBuilder.SetupScheduledTask();
     modelBuilder.SetupTriggerMappings();
-
     base.OnModelCreating(modelBuilder);
   }
 }
