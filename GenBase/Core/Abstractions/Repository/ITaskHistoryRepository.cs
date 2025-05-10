@@ -48,5 +48,12 @@ public interface ITaskHistoryRepository : IDisposable {
   /// <returns></returns>
   public Task CommitAsync(CancellationToken cancellationToken = default);
 
+  /// <summary>
+  /// Deletes data directly from the database using a filter
+  /// </summary>
+  /// <param name="filter">filter to perform the deletion</param>
+  /// <param name="autoCommit">if true, commit automatically, otherwise you will need to call <see cref="CommitAsync(CancellationToken)"/> manually.</param>
+  /// <param name="cancellationToken">Token for async executions</param>
+  /// <returns></returns>
   public Task DeleteAsync(Expression<Func<TaskExecutionHistory, bool>> filter, bool autoCommit = true, CancellationToken cancellationToken = default);
 }

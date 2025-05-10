@@ -1,13 +1,11 @@
 ﻿using GenTaskScheduler.Core.Abstractions.Common;
 using GenTaskScheduler.Core.Abstractions.Providers;
 using GenTaskScheduler.Core.Abstractions.Repository;
-using GenTaskScheduler.Core.Data.Internal;
 using GenTaskScheduler.Core.Data.Services;
 using GenTaskScheduler.Core.Infra;
 using GenTaskScheduler.Core.Infra.Configurations;
 using GenTaskScheduler.Core.Infra.Logger;
 using GenTaskScheduler.Core.Scheduler;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
@@ -92,7 +90,7 @@ public static class GenTaskSchedulerCoreExtension {
     // Optional: auto apply migrations
     if(applyMigrations) {
       using var provider = services.BuildServiceProvider();
-      var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(Assembly.GetExecutingAssembly().GetName().Name!);
+      var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger($"{Assembly.GetExecutingAssembly().GetName().Name!}[MIGRATION WARNING]");
 
       logger.LogWarning("""
         ⚠️ WARNING: Automatic EF Core migrations are enabled (applyMigrations = true).
@@ -103,10 +101,14 @@ public static class GenTaskSchedulerCoreExtension {
            utility to generate the SQL scripts for manual review and execution by your DBA.
 
         Example usage:
-            var exporter = SchemeExporter.Create(serviceProvider.GetRequiredService<ISchemeProvider>());
-            var script = exporter.GetScript(); // or exporter.ExportToFile("schema.sql");
+            var schemeProvider = provider.GetRequiredService<ISchemeProvider>();
+            var scripts = schemeProvider.GenerateSchemeScript(); // get string scripts
+            // or save as sql file
+            File.AppendAllText("/your/path/for/file.sql", scripts);
         """);
 
+      logger.LogInformation("Migrations will be applied in 5 seconds");
+      Task.WaitAny(Task.Delay(TimeSpan.FromSeconds(5)));
       sqlProviderInstance.ApplyMigrations(provider);
     }
 
